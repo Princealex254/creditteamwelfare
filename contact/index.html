@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact | Credit Team Welfare</title>
+    <style>
+        :root { --primary: #6B0F1A; --primary-dark: #4A0A12; --accent: #C9A24D; --white: #FFFFFF; --bg-light: #FFF5F6; --text-dark: #333333; --shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        body.dark-mode { --bg-light: #1a1a1a; --text-dark: #f0f0f0; --white: #2d2d2d; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-light); color: var(--text-dark); line-height: 1.6; }
+        a { text-decoration: none; color: inherit; }
+        
+        nav { background: var(--primary); color: var(--white); padding: 1rem 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 1000; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
+        .nav-links { display: flex; gap: 20px; list-style: none; }
+        .nav-links a:hover, .nav-links a.active { color: var(--accent); }
+        .btn-gold { background: var(--accent); color: var(--primary-dark); padding: 8px 20px; border-radius: 5px; font-weight: bold; }
+        .theme-toggle { cursor: pointer; margin-left: 15px; }
+        .mobile-menu-btn { display: none; font-size: 1.5rem; cursor: pointer; }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; flex-direction: column; position: absolute; top: 70px; left: 0; width: 100%; background: var(--primary); padding: 20px; text-align: center; }
+            .nav-links.active { display: flex; }
+            .mobile-menu-btn { display: block; }
+        }
+
+        .hero-small {
+            background: linear-gradient(rgba(74, 10, 18, 0.9), rgba(107, 15, 26, 0.8)), url('/assets/images/hero.png');
+            background-size: cover; background-position: center; color: var(--white); padding: 100px 5%; text-align: center;
+        }
+        .hero-small h1 { font-size: 3rem; margin-bottom: 15px; color: var(--white); }
+
+        .container {
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 0 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        .contact-card { background: var(--white); padding: 50px; border-radius: 10px; box-shadow: var(--shadow); border-top: 5px solid var(--primary); }
+        
+        .contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; }
+        .contact-item h3 { color: var(--accent); margin-bottom: 10px; }
+        .contact-item p { font-size: 1.1rem; }
+
+        footer { background: var(--primary-dark); color: var(--white); padding: 40px 5%; text-align: center; margin-top: 50px; }
+        .footer-links { margin: 20px 0; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+        .footer-links a:hover { color: var(--accent); }
+        .copyright { color: #aaa; font-size: 0.9rem; }
+
+        /* Form Styles */
+        .form-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; }
+        input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem; font-family: inherit; }
+        
+        /* Toast Notifications */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 3000; }
+        .toast { background: var(--white); padding: 15px 25px; border-radius: 5px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; border-left: 5px solid var(--primary); transform: translateX(120%); transition: transform 0.3s ease; }
+        .toast.show { transform: translateX(0); }
+        .toast.success { border-left-color: #28a745; }
+        .toast.error { border-left-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="logo">Credit Team Welfare</div>
+        <div class="mobile-menu-btn" onclick="toggleMenu()" aria-label="Toggle navigation menu" role="button" tabindex="0">☰</div>
+        <ul class="nav-links">
+            <li><a href="/">Home</a></li>
+            <li><a href="/about/">About</a></li>
+            <li><a href="/how-it-works/">How It Works</a></li>
+            <li><a href="/join/">Join</a></li>
+            <li><a href="/contact/" class="active">Contact</a></li>
+            <li><a href="/login/" class="btn-gold">Login</a></li>
+            <li class="theme-toggle" onclick="toggleTheme()">🌙</li>
+        </ul>
+    </nav>
+
+    <div class="hero-small">
+        <h1>Get in Touch</h1>
+        <p>Have questions about the constitution, contributions, or upcoming events? Reach out to the committee.</p>
+    </div>
+
+    <div class="container">
+        <div class="contact-card">
+            <h2 style="color: var(--primary); margin-bottom: 20px;">Send us a Message</h2>
+            <form id="contactForm" onsubmit="handleContact(event)">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="c-name" required placeholder="Your Name">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="c-email" required placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea id="c-message" rows="4" required placeholder="How can we help?"></textarea>
+                </div>
+                <button type="submit" id="c-submit-btn" style="background: var(--accent); color: var(--primary-dark); border: none; padding: 12px 30px; font-size: 1rem; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%;">Send Message</button>
+            </form>
+        </div>
+
+        <div class="contact-card">
+            <div class="contact-grid">
+                <div class="contact-item">
+                    <h3>Email</h3>
+                    <p>creditteamwelfare@gmail.com</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <footer>
+        <h3>Credit Team Welfare</h3>
+        <div class="footer-links">
+            <a href="/">Home</a>
+            <a href="/about/">About</a>
+            <a href="/how-it-works/">How It Works</a>
+            <a href="/join/">Join</a>
+            <a href="/login/">Login</a>
+        </div>
+        <p class="copyright">&copy; <span id="year">2023</span> Credit Team Welfare. All Rights Reserved.</p>
+        <p class="copyright" style="font-size: 0.8rem; margin-top: 10px;">Designed by <a href="https://www.princealex.pro" target="_blank" style="color: inherit; text-decoration: underline;">Prince Alex Digital</a></p>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
+            authDomain: "princealextravel.firebaseapp.com",
+            projectId: "princealextravel",
+            storageBucket: "princealextravel.firebasestorage.app",
+            messagingSenderId: "947577729462",
+            appId: "1:947577729462:web:dd4b4c7cb4a984c5e3d117"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        document.getElementById("year").textContent = new Date().getFullYear();
+        
+        window.toggleMenu = function() {
+            document.querySelector('.nav-links').classList.toggle('active');
+        }
+
+        // Close mobile menu when a link is clicked
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.querySelector('.nav-links').classList.remove('active');
+            });
+        });
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const navLinks = document.querySelector('.nav-links');
+            const menuBtn = document.querySelector('.mobile-menu-btn');
+            if (navLinks && menuBtn && !navLinks.contains(e.target) && !menuBtn.contains(e.target) && navLinks.classList.contains('active')) {
+                navLinks.classList.remove('active');
+            }
+        });
+
+        window.toggleTheme = function() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            document.querySelector('.theme-toggle').textContent = isDark ? '☀️' : '🌙';
+        }
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            document.querySelector('.theme-toggle').textContent = '☀️';
+        }
+
+        window.showToast = (message, type = 'success') => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        };
+
+        window.handleContact = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('c-submit-btn');
+            btn.disabled = true;
+            btn.textContent = "Sending...";
+            
+            const name = document.getElementById('c-name').value;
+            const email = document.getElementById('c-email').value;
+            const message = document.getElementById('c-message').value;
+
+            try {
+                await addDoc(collection(db, "inquiries"), {
+                    name, email, message,
+                    date: new Date().toISOString(),
+                    status: "NEW"
+                });
+                showToast("Thanks for reaching out! We've received your message.");
+                e.target.reset();
+            } catch(err) {
+                console.error(err);
+                showToast("Oops! We couldn't send your message. Please try again.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Send Message";
+            }
+        }
+    </script>
+</body>
+</html>
