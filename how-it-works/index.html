@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How It Works | Credit Team Welfare</title>
+    <style>
+        :root { --primary: #6B0F1A; --primary-dark: #4A0A12; --accent: #C9A24D; --white: #FFFFFF; --bg-light: #FFF5F6; --text-dark: #333333; --shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        body.dark-mode { --bg-light: #1a1a1a; --text-dark: #f0f0f0; --white: #2d2d2d; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-light); color: var(--text-dark); line-height: 1.6; }
+        a { text-decoration: none; color: inherit; }
+        
+        nav { background: var(--primary); color: var(--white); padding: 1rem 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
+        .nav-links { display: flex; gap: 20px; list-style: none; }
+        .nav-links a:hover, .nav-links a.active { color: var(--accent); }
+        .btn-gold { background: var(--accent); color: var(--primary-dark); padding: 8px 20px; border-radius: 5px; font-weight: bold; }
+        .theme-toggle { cursor: pointer; margin-left: 15px; }
+        .mobile-menu-btn { display: none; font-size: 1.5rem; cursor: pointer; }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; flex-direction: column; position: absolute; top: 70px; left: 0; width: 100%; background: var(--primary); padding: 20px; text-align: center; }
+            .nav-links.active { display: flex; }
+            .mobile-menu-btn { display: block; }
+            .process-step { flex-direction: column; align-items: center; text-align: center; padding: 20px; }
+            .step-number { margin-right: 0; margin-bottom: 15px; }
+        }
+
+        .hero-small {
+            background: linear-gradient(rgba(74, 10, 18, 0.9), rgba(107, 15, 26, 0.8)), url('/assets/images/hero.png');
+            background-size: cover; background-position: center; color: var(--white); padding: 100px 5%; text-align: center;
+        }
+        .hero-small h1 { font-size: 3rem; margin-bottom: 15px; }
+        .container { max-width: 1100px; margin: 50px auto; padding: 0 20px; }
+        
+        .process-step { display: flex; align-items: flex-start; margin-bottom: 40px; background: var(--white); padding: 30px; border-radius: 10px; box-shadow: var(--shadow); border-left: 5px solid var(--accent); }
+        .step-number { background: var(--primary); color: var(--white); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; margin-right: 20px; flex-shrink: 0; }
+        .step-content h3 { color: var(--primary); margin-bottom: 10px; }
+
+        .governance-section { margin-top: 60px; }
+        .role-card { background: var(--white); padding: 20px; border-radius: 8px; box-shadow: var(--shadow); margin-bottom: 15px; border-top: 3px solid var(--primary); }
+        .role-title { color: var(--accent); font-weight: bold; text-transform: uppercase; font-size: 0.9rem; }
+        .role-name { font-size: 1.2rem; font-weight: bold; margin: 5px 0; }
+
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+
+        footer { background: var(--primary-dark); color: var(--white); padding: 40px 5%; text-align: center; margin-top: 50px; }
+        .footer-links { margin: 20px 0; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+        .footer-links a:hover { color: var(--accent); }
+        .copyright { color: #aaa; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="logo">Credit Team Welfare</div>
+        <div class="mobile-menu-btn" onclick="toggleMenu()">☰</div>
+        <ul class="nav-links">
+            <li><a href="/">Home</a></li>
+            <li><a href="/about/">About</a></li>
+            <li><a href="/how-it-works/" class="active">How It Works</a></li>
+            <li><a href="/join/">Join</a></li>
+            <li><a href="/contact/">Contact</a></li>
+            <li><a href="/login/" class="btn-gold">Login</a></li>
+            <li class="theme-toggle" onclick="toggleTheme()">🌙</li>
+        </ul>
+    </nav>
+
+    <div class="hero-small">
+        <h1>Operational Framework</h1>
+        <p>Clear contributions. Transparent process. Member-first support.</p>
+    </div>
+
+    <div class="container">
+        <h2 style="color: var(--primary); margin-bottom: 30px;">Membership & Contributions</h2>
+        
+        <div class="process-step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <h3>Registration</h3>
+                <p>New members join by filling out the interest form and paying a one-time yearly registration fee of <strong>KES 500</strong>. This confirms your commitment to the welfare constitution.</p>
+            </div>
+        </div>
+
+        <div class="process-step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <h3>Monthly Contributions</h3>
+                <p>Every member contributes <strong>KES 200</strong> monthly. This amount is payable by the <strong>5th of every month</strong>. Consistent contribution is required to remain in good standing and eligible for benefits.</p>
+            </div>
+        </div>
+
+        <div class="process-step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <h3>Support Requests & Review</h3>
+                <p>When a need arises, members submit a formal request to the committee. The request is reviewed against the constitution, a decision is communicated promptly, and the outcome is recorded for transparency.</p>
+            </div>
+        </div>
+
+        <div class="governance-section">
+            <h2 style="color: var(--primary); margin-bottom: 30px;">Governance & Accountability</h2>
+            <p style="margin-bottom: 20px;">Our welfare is managed by a democratically elected committee to ensure funds are safe and used for their intended purpose.</p>
+            
+            <div class="grid-2">
+                <div class="role-card">
+                    <div class="role-title">Leadership</div>
+                    <div class="role-name">Chairperson</div>
+                    <p>Oversees all welfare activities, presides over meetings, and ensures the constitution is upheld.</p>
+                </div>
+                <div class="role-card">
+                    <div class="role-title">Administration</div>
+                    <div class="role-name">Secretary</div>
+                    <p>Maintains records of meetings, membership registry, and communicates updates to the team.</p>
+                </div>
+                <div class="role-card">
+                    <div class="role-title">Finance</div>
+                    <div class="role-name">Treasurer</div>
+                    <p>Collects contributions, maintains financial records, and prepares financial reports for transparency.</p>
+                </div>
+                <div class="role-card">
+                    <div class="role-title">Community</div>
+                    <div class="role-name">Committee Members</div>
+                    <p>Represent the interests of the general members and assist in decision-making processes.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <h3>Credit Team Welfare</h3>
+        <div class="footer-links">
+            <a href="/">Home</a>
+            <a href="/about/">About</a>
+            <a href="/how-it-works/">How It Works</a>
+            <a href="/join/">Join</a>
+            <a href="/login/">Login</a>
+        </div>
+        <p class="copyright">&copy; <span id="year">2023</span> Credit Team Welfare. All Rights Reserved.</p>
+        <p class="copyright" style="font-size: 0.8rem; margin-top: 10px;">Designed by <a href="https://www.princealex.pro" target="_blank" style="color: inherit; text-decoration: underline;">Prince Alex Digital</a></p>
+    </footer>
+
+    <script>
+        document.getElementById("year").textContent = new Date().getFullYear();
+        function toggleMenu() {
+            document.querySelector('.nav-links').classList.toggle('active');
+        }
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            document.querySelector('.theme-toggle').textContent = isDark ? '☀️' : '🌙';
+        }
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            document.querySelector('.theme-toggle').textContent = '☀️';
+        }
+    </script>
+</body>
+</html>
