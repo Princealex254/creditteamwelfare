@@ -271,6 +271,7 @@
                             </div>
                             <button class="btn-action" style="width:auto; background:#ef6c00;" onclick="sendDeadlineReminder()">🔔 Send Deadline Reminder</button>
                             <button class="btn-action" style="width:auto; background:#2e7d32;" onclick="exportContributionsPDF()">⬇ Export PDF</button>
+                            <button class="btn-action" style="width:auto; background:#00838f;" onclick="openModal('modal-bulk-contribution')">📂 Bulk Import</button>
                             <button class="btn-action" style="width:auto;" onclick="openModal('modal-contribution')">+ Record Contribution</button>
                         </div>
                     </div>
@@ -290,6 +291,11 @@
                     </div>
                     <div class="card">
                         <h3>Recent Contributions</h3>
+                        <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:200px;">
+                                <input type="text" id="contribution-search" placeholder="Search email, month, ref..." onkeyup="applyContributionFilters()">
+                            </div>
+                        </div>
                         <div class="table-container">
                         <table>
                             <thead>
@@ -747,6 +753,26 @@
                     <input type="number" id="cont-amount" value="200">
                 </div>
                 <button type="submit" class="btn-action">Record Payment</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-bulk-contribution" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal('modal-bulk-contribution')">&times;</button>
+            <h3>Bulk Import Contributions</h3>
+            <p style="font-size:0.9rem; color:#666; margin-bottom:15px;">Upload a CSV file with columns: <strong>Email, Month, Amount, Date (YYYY-MM-DD)</strong>.<br><em>Note: Emails will NOT be sent for bulk imports.</em></p>
+            <a href="#" onclick="downloadSampleCSV()" style="font-size:0.8rem; color:var(--primary); text-decoration:underline; display:block; margin-bottom:15px;">Download Sample CSV</a>
+            <form onsubmit="processBulkContributions(event)">
+                <div class="form-group">
+                    <label>Select CSV File</label>
+                    <input type="file" id="bulk-cont-file" accept=".csv" required>
+                </div>
+                <div id="bulk-progress" style="display:none; margin-top:10px;">
+                    <progress id="bulk-progress-bar" value="0" max="100" style="width:100%;"></progress>
+                    <div id="bulk-status-text" style="font-size:0.8rem; text-align:center;">Processing...</div>
+                </div>
+                <button type="submit" class="btn-action">Start Import</button>
             </form>
         </div>
     </div>
@@ -1764,6 +1790,92 @@
                 closeModal('modal-contribution');
             } catch (err) { showToast("Error: " + err.message, 'error'); }
             finally { hideLoading(); submitBtn.disabled = false; }
+        }
+
+        window.downloadSampleCSV = () => {
+            const csvContent = "data:text/csv;charset=utf-8,Email,Month,Amount,Date\njohn@example.com,January,200,2024-01-05\njane@example.com,February,200,2024-02-05\nnew.member@example.com,Registration Fee,500,2024-01-10";
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "contributions_sample.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        window.processBulkContributions = async (e) => {
+            e.preventDefault();
+            if (!require('CONTRIBUTION_WRITE')) return;
+            
+            const fileInput = document.getElementById('bulk-cont-file');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            document.getElementById('bulk-progress').style.display = 'block';
+            
+            const reader = new FileReader();
+            reader.onload = async function(evt) {
+                const text = evt.target.result;
+                const lines = text.split('\n');
+                const total = lines.length - 1; // minus header
+                let processed = 0;
+                let successCount = 0;
+                let errors = [];
+
+                // Skip header (index 0)
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    
+                    const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                    // Expected: Email, Month, Amount, Date
+                    if (cols.length < 3) {
+                        errors.push(`Line ${i+1}: Invalid format`);
+                        continue;
+                    }
+
+                    const [email, month, amountStr, dateStr] = cols;
+                    const amount = parseFloat(amountStr);
+                    const date = dateStr || new Date().toISOString().split('T')[0];
+
+                    if (!email || !month || isNaN(amount)) {
+                        errors.push(`Line ${i+1}: Missing required fields`);
+                        continue;
+                    }
+
+                    try {
+                        await addDoc(collection(db, "contributions"), {
+                            email, month, amount, date, 
+                            paidAt: new Date(),
+                            source: 'BULK_UPLOAD'
+                        });
+                        successCount++;
+                    } catch (err) {
+                        errors.push(`Line ${i+1}: ${err.message}`);
+                    }
+
+                    processed++;
+                    document.getElementById('bulk-progress-bar').value = (processed / total) * 100;
+                    document.getElementById('bulk-status-text').textContent = `Processed ${processed}/${total}`;
+                }
+
+                await logActivity("BULK_CONTRIBUTION_IMPORT", { count: successCount, errors: errors.length });
+                
+                let msg = `Import complete. ${successCount} records added.`;
+                if (errors.length > 0) msg += ` ${errors.length} errors (check console).`;
+                console.log("Bulk Import Errors:", errors);
+                
+                showToast(msg, errors.length > 0 ? 'warning' : 'success');
+                
+                document.getElementById('bulk-progress').style.display = 'none';
+                submitBtn.disabled = false;
+                e.target.reset();
+                closeModal('modal-bulk-contribution');
+                loadData();
+            };
+            reader.readAsText(file);
         }
 
         // 2b. Edit/Delete Contribution
@@ -3565,13 +3677,72 @@
             }
         }
 
+        // 6. Filter & Render Contributions
+        window.applyContributionFilters = () => {
+            const search = document.getElementById('contribution-search').value.toLowerCase();
+            
+            let filtered = allContributionsCache.filter(c => {
+                const matchesSearch = (c.email && c.email.toLowerCase().includes(search)) ||
+                                      (c.month && c.month.toLowerCase().includes(search)) ||
+                                      (c.id && c.id.toLowerCase().includes(search));
+                return matchesSearch;
+            });
+
+            // Data is already sorted by date descending from Firestore query
+            
+            const contributionsToRender = search.length === 0 ? filtered.slice(0, 3) : filtered;
+            renderContributionsTable(contributionsToRender, filtered.length);
+        }
+
+        window.renderContributionsTable = (contributions, totalFilteredCount) => {
+            const contTable = document.getElementById('contributions-table-body');
+            if (!contTable) return;
+
+            if (contributions.length === 0) {
+                contTable.innerHTML = '<tr><td colspan="6">No contributions found matching criteria.</td></tr>';
+                return;
+            }
+
+            let html = contributions.map(c => {
+                return `
+                <tr>
+                    <td>${c.date}</td>
+                    <td><small style="font-family:monospace; color:#666;">${c.id}</small></td>
+                    <td>${c.email}</td>
+                    <td>${c.month}</td>
+                    <td style="font-weight:bold; color:green;">${formatMoney(c.amount)}</td>
+                    <td>
+                        <button class="action-btn ${getDisabledClass('CONTRIBUTION_WRITE')}" style="background:#e3f2fd; color:#1565c0;" onclick="openEditContribution('${c.id}')">Edit</button>
+                        <button class="action-btn btn-delete ${getDisabledClass('CONTRIBUTION_WRITE')}" onclick="deleteContribution('${c.id}')">Delete</button>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            const search = document.getElementById('contribution-search').value.toLowerCase();
+            if (search.length === 0 && totalFilteredCount > 3) {
+                html += `<tr><td colspan="6" style="text-align:center; color:#666; font-style:italic; padding:15px;">Showing 3 of ${totalFilteredCount} contributions. Use search to find more.</td></tr>`;
+            }
+            contTable.innerHTML = html;
+        }
+
         // Helper: Calculate Arrears
         const getArrearsCount = (memberEmail) => {
-            const currentMonthIndex = new Date().getMonth(); // 0-11
-            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            const monthsDue = monthNames.slice(0, currentMonthIndex + 1);
-            const paidMonths = allContributionsCache.filter(c => c.email === memberEmail && c.month !== 'Registration Fee').map(c => c.month);
-            return monthsDue.filter(m => !paidMonths.includes(m)).length;
+            const today = new Date();
+            const currentMonth = today.toLocaleString('default', { month: 'long' });
+            const currentYear = today.getFullYear();
+
+            // Check if member paid this month
+            const hasPaid = allContributionsCache.some(c => {
+                if (c.email !== memberEmail) return false;
+                const paidDate = new Date(c.date);
+                return c.month === currentMonth && paidDate.getFullYear() === currentYear;
+            });
+
+            if (today.getDate() > 5 && !hasPaid) {
+                return 1;
+            }
+
+            return 0;
         }
 
         // 6. Filter & Render Members
@@ -3602,19 +3773,21 @@
                 filtered.sort((a, b) => a.name.localeCompare(b.name));
             }
 
-            renderMembersTable(filtered);
+            // If no search term is provided, show only the first 3 members.
+            const membersToRender = search.length === 0 ? filtered.slice(0, 3) : filtered;
+            renderMembersTable(membersToRender, filtered.length);
         }
 
-        window.renderMembersTable = (members) => {
+        window.renderMembersTable = (members, totalFilteredCount) => {
             const memTable = document.getElementById('members-table-body');
             if (!memTable) return;
             
             if (members.length === 0) {
-                memTable.innerHTML = '<tr><td colspan="7">No members found matching criteria.</td></tr>';
+                memTable.innerHTML = '<tr><td colspan="8">No members found matching criteria.</td></tr>';
                 return;
             }
 
-            memTable.innerHTML = members.map(m => {
+            let html = members.map(m => {
                 const status = m.status || 'Active';
                 const statusClass = status === 'Active' ? 'status-active' : 'status-inactive';
                 const toggleBtnText = status === 'Active' ? 'Deactivate' : 'Activate';
@@ -3651,6 +3824,18 @@
                     </td>
                 </tr>`;
             }).join('');
+
+            const search = document.getElementById('member-search').value.toLowerCase();
+            if (search.length === 0 && totalFilteredCount > 3) {
+                html += `
+                    <tr>
+                        <td colspan="8" style="text-align:center; color:#666; font-style:italic; padding:15px;">
+                            Showing 3 of ${totalFilteredCount} members. Use search to find more.
+                        </td>
+                    </tr>
+                `;
+            }
+            memTable.innerHTML = html;
         }
 
         // Load Data for Admin View
@@ -3744,25 +3929,13 @@
             const qCont = query(collection(db, "contributions"), orderBy("date", "desc"));
             const contSnap = await getDocs(qCont);
             allContributionsCache = [];
-            let contHTML = '';
             contSnap.forEach((doc) => {
                 const c = { id: doc.id, ...doc.data() };
                 allContributionsCache.push(c);
-                contHTML += `
-                <tr>
-                    <td>${c.date}</td>
-                    <td><small style="font-family:monospace; color:#666;">${doc.id}</small></td>
-                    <td>${c.email}</td>
-                    <td>${c.month}</td>
-                    <td style="font-weight:bold; color:green;">${formatMoney(c.amount)}</td>
-                    <td>
-                        <button class="action-btn ${getDisabledClass('CONTRIBUTION_WRITE')}" style="background:#e3f2fd; color:#1565c0;" onclick="openEditContribution('${doc.id}')">Edit</button>
-                        <button class="action-btn btn-delete ${getDisabledClass('CONTRIBUTION_WRITE')}" onclick="deleteContribution('${doc.id}')">Delete</button>
-                    </td>
-                </tr>`;
             });
-            const contTable = document.getElementById('contributions-table-body');
-            if(contTable) contTable.innerHTML = contHTML || '<tr><td colspan="6">No contributions recorded.</td></tr>';
+            
+            // This will render the table
+            applyContributionFilters();
 
             // 3c. Expenditures
             const qExp = query(collection(db, "expenditures"), orderBy("date", "desc"));
@@ -3792,7 +3965,9 @@
             if(expTable) expTable.innerHTML = expHTML || '<tr><td colspan="5">No expenditures recorded.</td></tr>';
 
             // 3b. Compute Contribution Stats
-            const currentMonthName = new Date().toLocaleString('default', { month: 'long' });
+            const today = new Date();
+            const currentMonthName = today.toLocaleString('default', { month: 'long' });
+            const currentYear = today.getFullYear();
             let totalCollected = 0;
             let totalCollectedAllTime = 0;
             const uniquePaidEmails = new Set();
@@ -3800,7 +3975,8 @@
             allContributionsCache.forEach(c => {
                 const amount = parseFloat(c.amount || 0);
                 totalCollectedAllTime += amount;
-                if (c.month === currentMonthName) {
+                const cDate = new Date(c.date);
+                if (c.month === currentMonthName && cDate.getFullYear() === currentYear) {
                     totalCollected += amount;
                     uniquePaidEmails.add(c.email);
                 }
@@ -3818,8 +3994,15 @@
             // Update Stats UI
             const activeMembers = allMembersCache.filter(m => (m.status || 'Active') === 'Active');
             const totalActiveMembers = activeMembers.length;
-            const outstanding = totalActiveMembers - paidCount;
-            const arrearsValue = outstanding * 200;
+            const outstanding = Math.max(0, totalActiveMembers - paidCount);
+
+            let membersInArrears = 0;
+            // Arrears only count if it's past the 5th of the month
+            if (today.getDate() > 5) {
+                membersInArrears = activeMembers.filter(m => !uniquePaidEmails.has(m.email)).length;
+            }
+
+            const arrearsValue = membersInArrears * 200;
             const activeCasesCount = allCasesCache.filter(c => c.status === 'RECEIVED' || c.status === 'IN_REVIEW').length;
             
             const statCollected = document.getElementById('stat-collected');
@@ -3886,7 +4069,7 @@
             if(dashArrearsMonth) {
                 if (currentUserRole === 'super_admin') {
                     dashArrearsMonth.previousElementSibling.textContent = 'Arrears (This Month)';
-                    dashArrearsMonth.textContent = `KES ${arrearsValue.toLocaleString()}`;
+                    dashArrearsMonth.innerHTML = `KES ${arrearsValue.toLocaleString()} <span style="font-size:0.9rem; color:#666; font-weight:normal;">(${membersInArrears} members)</span>`;
                 } else {
                     dashArrearsMonth.previousElementSibling.textContent = 'Outstanding Members';
                     dashArrearsMonth.textContent = `${outstanding}`;
