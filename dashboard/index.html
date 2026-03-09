@@ -716,10 +716,7 @@
 
             let html = '';
             contributions.forEach((c) => {
-                let dateDisplay = c.date;
-                if (c.paidAt && c.paidAt.toDate) {
-                    dateDisplay = c.paidAt.toDate().toLocaleDateString();
-                }
+                const dateDisplay = c.date; // Use the YYYY-MM-DD date string for consistency with admin panel
                 html += `
                 <tr>
                     <td data-label="Month">${c.month}</td>
@@ -792,11 +789,7 @@
             let lastDate = '-';
             if (contributions.length > 0) {
                 lastAmount = contributions[0].amount;
-                if (contributions[0].paidAt && contributions[0].paidAt.toDate) {
-                    lastDate = contributions[0].paidAt.toDate().toLocaleDateString();
-                } else {
-                    lastDate = contributions[0].date;
-                }
+                lastDate = contributions[0].date; // Use the YYYY-MM-DD date string for consistency
             }
             document.getElementById('last-contribution').textContent = `KES ${lastAmount}`;
             document.getElementById('last-contribution-date').textContent = lastDate;
@@ -812,26 +805,18 @@
             paidEl.textContent = hasPaid ? 'Yes' : 'No';
             paidEl.style.color = hasPaid ? 'green' : '#c62828';
 
-            // 3. Arrears
-            let joinDate = new Date();
-            if (currentMemberData && currentMemberData.joined) joinDate = new Date(currentMemberData.joined);
-            
-            const now = new Date();
-            let monthsMembership = (now.getFullYear() - joinDate.getFullYear()) * 12;
-            monthsMembership -= joinDate.getMonth();
-            monthsMembership += now.getMonth();
-            monthsMembership += 1; // Include current month
-            if (monthsMembership < 0) monthsMembership = 0;
-            
-            const totalMonthlyPayments = contributions.filter(c => c.month !== 'Registration Fee').length;
-            const arrears = Math.max(0, monthsMembership - totalMonthlyPayments);
+            // 3. Arrears (Simplified Logic)
+            const today = new Date();
+            let arrears = 0;
+            if (today.getDate() > 5 && !hasPaid) {
+                arrears = 1;
+            }
             
             const arrearsEl = document.getElementById('arrears-count');
             arrearsEl.textContent = arrears;
             arrearsEl.style.color = arrears > 0 ? '#c62828' : 'green';
             
             // Calculate Next Due Date
-            const today = new Date();
             const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
             
             let due;
@@ -1035,4 +1020,3 @@
     </script>
 </body>
 </html>
-
