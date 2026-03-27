@@ -12,6 +12,7 @@
         /* Sidebar Layout */
         .admin-wrapper { display: flex; min-height: 100vh; }
         .sidebar { width: 260px; background: var(--primary-dark); color: var(--white); display: flex; flex-direction: column; position: fixed; height: 100%; z-index: 100; transition: width 0.3s; }
+        .sidebar { width: 260px; background: var(--primary-dark); color: var(--white); display: flex; flex-direction: column; position: fixed; height: 100%; z-index: 100; transition: width 0.3s; flex-shrink: 0; }
         .sidebar { width: 260px; background: var(--primary-dark); color: var(--white); display: flex; flex-direction: column; position: fixed; height: 100%; z-index: 100; transition: width 0.3s; overflow-y: auto; /* Enable vertical scrolling */ }
         .sidebar-header { padding: 20px; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--accent); display: flex; align-items: center; gap: 10px; }
 
@@ -19,15 +20,47 @@
         .sidebar-menu li a { display: flex; align-items: center; gap: 15px; padding: 15px 25px; color: rgba(255,255,255,0.8); text-decoration: none; transition: 0.3s; cursor: pointer; border-left: 4px solid transparent; }
         .sidebar-menu li a:hover, .sidebar-menu li a.active { background: rgba(255,255,255,0.1); color: var(--white); border-left-color: var(--accent); }
         .user-info-sidebar { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.9rem; }
-        
-        .main-content { flex: 1; margin-left: 260px; padding: 30px; width: calc(100% - 260px); transition: margin-left 0.3s, width 0.3s; }
+        .notification-bell { position: relative; margin-left: auto; cursor: pointer; }
+        .content-area-wrapper {
+            flex: 1;
+            margin-left: 260px; /* Pushes entire content area to the right of fixed sidebar */
+            transition: margin-left 0.3s ease;
+        }
+        .main-content { flex: 1; padding: 30px; }
         .page-header { margin-bottom: 30px; }
         .page-title { font-size: 1.8rem; color: var(--primary); margin-bottom: 5px; }
         
         /* Grid & Cards */
-        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; }
-        .card { background: var(--white); padding: 25px; border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 25px; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+        .card { background: var(--white); padding: 25px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 25px; border: 1px solid rgba(0,0,0,0.05); }
         .card h3 { color: var(--primary); margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        
+        /* Premium KPI Cards */
+        .kpi-card { display: flex; align-items: center; gap: 20px; transition: transform 0.3s ease; border: none; }
+        .kpi-card:hover { transform: translateY(-5px); }
+        .kpi-icon { width: 54px; height: 54px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+        .kpi-content { flex: 1; }
+        .kpi-label { font-size: 0.8rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .kpi-value { font-size: 1.5rem; font-weight: 800; color: #1e293b; line-height: 1; }
+        .kpi-trend { font-size: 0.75rem; font-weight: 700; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+        .trend-up { color: #10b981; }
+        .trend-down { color: #ef4444; }
+        
+        .bg-blue-soft { background: #e0f2fe; color: #0ea5e9; }
+        .bg-green-soft { background: #dcfce7; color: #10b981; }
+        .bg-red-soft { background: #fee2e2; color: #ef4444; }
+        .bg-gold-soft { background: #fef9c3; color: #d4af37; }
+
+        /* Charts Section */
+        .charts-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 450px), 1fr)); gap: 25px; margin-bottom: 25px; }
+        .chart-card { background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow); }
+        .chart-wrapper { position: relative; height: 220px; width: 100%; }
+
+        /* Table Enhancements */
+        .table-container { max-height: 600px; overflow-y: auto; border-radius: 8px; border: 1px solid #e2e8f0; background: white; }
+        table thead th { position: sticky; top: 0; z-index: 10; background: #f8fafc; border-bottom: 2px solid #e2e8f0; cursor: pointer; }
+        table thead th:hover { background: #f1f5f9; }
+        table tbody tr:hover { background-color: #f8fafc; }
         
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 500; }
@@ -51,14 +84,63 @@
         .mobile-top-bar { display: none; align-items: center; gap: 15px; margin-bottom: 20px; background: var(--primary-dark); color: white; padding: 15px; border-radius: 8px; position: sticky; top: 0; z-index: 99; }
         .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
         .mobile-close-btn { display: none; }
-
-        @media (max-width: 768px) { 
-            .sidebar { position: fixed; left: -270px; width: 260px; height: 100%; transition: left 0.3s ease; box-shadow: 5px 0 15px rgba(0,0,0,0.2); }
-            .sidebar.active { left: 0; }
-            .main-content { margin-left: 0; width: 100%; padding: 15px; }
-            .mobile-top-bar { display: flex; }
-            .mobile-close-btn { display: inline-block !important; margin-right: 10px; cursor: pointer; }
+        
+        /* Persistent Top Header */
+        .admin-top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--white);
+            padding: 15px 30px;
+            margin: -30px -30px 30px -30px;
+            margin: 0; /* Remove problematic negative margins */
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 99;
         }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .desktop-view-title { font-weight: bold; color: var(--primary); font-size: 1.2rem; }
+
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; left: 0; transform: translateX(-100%); width: 280px; height: 100%; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 5px 0 15px rgba(0,0,0,0.2); }
+            .sidebar.active { transform: translateX(0); }
+            .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 90; }
+            .sidebar-overlay.active { display: block; }
+            .content-area-wrapper { margin-left: 0; }
+            .mobile-top-bar { display: flex; margin-bottom: 20px; }
+            .main-content { padding: 15px; } /* Adjust padding for mobile */
+            .mobile-close-btn { display: inline-block !important; margin-right: 10px; cursor: pointer; }
+            
+            /* Mobile Bottom Nav */
+            .mobile-bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e2e8f0; height: 65px; z-index: 1000; justify-content: space-around; align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+            .bottom-nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #64748b; text-decoration: none; font-size: 0.7rem; font-weight: 600; flex: 1; padding: 8px 0; cursor: pointer; }
+            .bottom-nav-item.active { color: var(--primary); }
+            .bottom-nav-item i { font-size: 1.2rem; }
+
+            /* Touch Friendliness */
+            .action-btn, .btn-action { min-height: 48px; padding: 12px 20px; font-size: 1rem; }
+            .sidebar-menu li a { padding: 18px 25px; min-height: 54px; }
+            .status-badge { padding: 6px 12px; font-size: 0.85rem; }
+            .case-tab { padding: 12px 20px; font-size: 1rem; }
+            table th, table td { padding: 15px 12px; }
+        }
+        /* Notification Bell Styling */
+        .notification-bell { position: relative; margin-left: auto; cursor: pointer; padding: 8px; border-radius: 50%; transition: background 0.2s; }
+        .notification-bell:hover { background: rgba(255,255,255,0.1); }
+        .notification-bell i { font-size: 1.3rem; color: var(--accent); }
+        .notification-count { position: absolute; top: 0px; right: 0px; background: #ef4444; color: white; border-radius: 50%; padding: 2px 6px; font-size: 0.7rem; font-weight: bold; line-height: 1; border: 1px solid var(--primary-dark); }
+        .notification-dropdown { position: absolute; top: 100%; right: 0; background: var(--white); border-radius: 8px; box-shadow: var(--shadow); width: 300px; max-height: 400px; overflow-y: auto; display: none; z-index: 1001; border: 1px solid #eee; }
+        .notification-dropdown i { color: var(--primary); }
+        .notification-dropdown.active { display: block; }
+        .notification-item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+        .notification-item:last-child { border-bottom: none; }
+        .notification-item:last-child { border-bottom: none; color: var(--text-dark); }
+        .notification-item:hover { background: var(--bg-light); }
+        .notification-item.unread { background: #fffbeb; font-weight: 600; }
+        .notification-item .icon { font-size: 1.1rem; color: var(--primary); }
+
+        .mobile-bottom-nav { display: none; }
 
         /* Login Styles */
         .login-wrapper { height: 100vh; display: flex; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; background: var(--bg-light); z-index: 2000; }
@@ -110,6 +192,8 @@
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <!-- Login Section -->
@@ -147,6 +231,7 @@
     <div id="admin-dashboard-section" style="display: none;">
         <div class="admin-wrapper">
             <!-- Sidebar -->
+            <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
             <aside class="sidebar">
                 <div class="sidebar-header">
                     <span class="mobile-close-btn" onclick="toggleSidebar()">✕</span>
@@ -182,38 +267,93 @@
                     <span style="font-size:1.5rem; cursor:pointer;" onclick="toggleSidebar()">☰</span>
                     <span style="font-weight:bold; font-size:1.2rem;">Admin Panel</span>
                 </div>
+            <div class="content-area-wrapper">
+                <header class="admin-top-header">
+                    <div class="header-left">
+                        <span style="font-size:1.5rem; cursor:pointer;" onclick="toggleSidebar()">☰</span>
+                        <span class="desktop-view-title" id="active-view-title">Dashboard</span>
+                    </div>
+                    <div class="header-right">
+                        <div class="notification-bell" onclick="toggleNotifications(event)">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-count">0</span>
+                            <div class="notification-dropdown"></div>
+                        </div>
+                    </div>
+                </header>
 
+
+                <main class="main-content">
                 <!-- Dashboard View -->
                 <div id="view-dashboard" class="view-section">
                     <div class="page-header">
                         <h1 class="page-title">Admin Dashboard</h1>
-                        <p style="color:#666;">Overview of welfare activities and pending actions.</p>
+                        <p style="color:#666;">Real-time welfare analytics and financial performance.</p>
                     </div>
-                    <div class="dashboard-grid" style="margin-bottom: 25px;">
-                        <div class="card">
-                            <h3>Collected (This Month)</h3>
-                            <div class="stat-value" id="dash-collected-month" style="font-size:1.5rem; font-weight:bold; color:green;">KES 0</div>
+                    
+                    <div class="dashboard-grid" style="margin-bottom: 30px;">
+                        <div class="card kpi-card">
+                            <div class="kpi-icon bg-green-soft"><i class="fas fa-hand-holding-dollar"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-label">Revenue (Month)</div>
+                                <div class="kpi-value" id="dash-collected-month">KES 0</div>
+                                <div class="kpi-trend trend-up" id="trend-revenue"><i class="fas fa-arrow-up"></i> 0%</div>
+                            </div>
                         </div>
-                        <div class="card">
-                            <h3>Total Collected</h3>
-                            <div class="stat-value" id="dash-collected-total" style="font-size:1.5rem; font-weight:bold; color:#1565c0;">KES 0</div>
+                        <div class="card kpi-card">
+                            <div class="kpi-icon bg-blue-soft"><i class="fas fa-vault"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-label">Total Assets</div>
+                                <div class="kpi-value" id="dash-collected-total">KES 0</div>
+                                <div class="kpi-trend" style="color:#64748b;">Cumulative</div>
+                            </div>
                         </div>
-                        <div class="card">
-                            <h3>Total Spent</h3>
-                            <div class="stat-value" id="dash-total-spent" style="font-size:1.5rem; font-weight:bold; color:#c62828;">KES 0</div>
+                        <div class="card kpi-card">
+                            <div class="kpi-icon bg-red-soft"><i class="fas fa-money-bill-transfer"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-label">Total Spent</div>
+                                <div class="kpi-value" id="dash-total-spent">KES 0</div>
+                                <div class="kpi-trend trend-down" id="trend-spent">0 cases</div>
+                            </div>
                         </div>
-                        <div class="card">
-                            <h3>Net Balance</h3>
-                            <div class="stat-value" id="dash-net-balance" style="font-size:1.5rem; font-weight:bold; color:#2e7d32;">KES 0</div>
+                        <div class="card kpi-card">
+                            <div class="kpi-icon bg-gold-soft"><i class="fas fa-users"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-label">Active Members</div>
+                                <div class="kpi-value" id="dash-active-members">0</div>
+                                <div class="kpi-trend trend-up" id="trend-members">New growth</div>
+                            </div>
                         </div>
-                        <div class="card">
-                            <h3>Arrears (This Month)</h3>
-                            <div class="stat-value" id="dash-arrears-month" style="font-size:1.5rem; font-weight:bold; color:#c62828;">KES 0</div>
+                        <div class="card kpi-card">
+                            <div class="kpi-icon bg-blue-soft"><i class="fas fa-scale-balanced"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-label">Net Balance</div>
+                                <div class="kpi-value" id="dash-net-balance">KES 0</div>
+                                <div class="kpi-trend" style="color:#64748b;">Available Funds</div>
+                            </div>
+                        </div>
+                        <div class="card kpi-card" onclick="showArrearsList()" style="cursor:pointer" title="Click to view members in arrears">
+                            <div class="kpi-icon bg-red-soft"><i class="fas fa-file-invoice-dollar"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-label">Arrears (Month)</div>
+                                <div class="kpi-value" id="dash-arrears-month">KES 0</div>
+                                <div class="kpi-trend trend-down" id="trend-arrears">Pending payments</div>
+                            </div>
                         </div>
                     </div>
+
+                    <div class="charts-container">
+                        <div class="chart-card" style="max-width: 750px;">
+                            <h3 style="border:none; font-size:1rem;">Contribution Trends (Last 6 Months)</h3>
+                            <div class="chart-wrapper">
+                                <canvas id="contributionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="dashboard-grid">
                         <div class="card">
-                            <h3>New Registrations</h3>
+                            <h3><i class="fas fa-user-plus" style="margin-right:10px; color:var(--accent);"></i> New Registrations</h3>
                             <div id="reg-list">Loading...</div>
                         </div>
                     </div>
@@ -384,6 +524,7 @@
                                 <option value="Active">Active</option>
                                 <option value="Inactive">Inactive</option>
                                 <option value="Archived">Archived (Deleted)</option>
+                                <option value="Pending">Pending Payment</option>
                             </select>
                             <select id="member-sort" onchange="applyMemberFilters()" style="width:auto; padding:10px; border:1px solid #ddd; border-radius:5px;">
                                 <option value="name">Sort by Name</option>
@@ -921,6 +1062,7 @@
                             <th>Date</th>
                             <th>Month</th>
                             <th>Amount</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody id="hist-table-body"></tbody>
@@ -945,6 +1087,12 @@
                         <option value="finance_admin">Finance Admin</option>
                         <option value="welfare_admin">Welfare Admin</option>
                     </select>
+                </div>
+                <div class="form-group" style="text-align: left;">
+                    <label>Permissions (Select Multiple)</label>
+                    <div id="add-admin-permissions-list" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 12px; border-radius: 6px; background: #fff;">
+                        <!-- Checkboxes will be rendered here -->
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Password (Optional - creates account)</label>
@@ -972,6 +1120,12 @@
                         <option value="finance_admin">Finance Admin</option>
                         <option value="welfare_admin">Welfare Admin</option>
                     </select>
+                </div>
+                <div class="form-group" style="text-align: left;">
+                    <label>Assign Permissions</label>
+                    <div id="edit-admin-permissions-list" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 12px; border-radius: 6px; background: #fff;">
+                        <!-- Checkboxes will be rendered here -->
+                    </div>
                 </div>
                 <button type="submit" class="btn-action">Update Role</button>
             </form>
@@ -1129,6 +1283,7 @@
             <div id="case-tab-actions" style="display:none;">
                 <div id="case-actions-container">
                     <!-- Dynamic buttons based on status -->
+                    <div id="case-approvals-info" style="margin-bottom:15px; font-size:0.9rem; color:#666;"></div>
                 </div>
             </div>
             
@@ -1136,12 +1291,36 @@
         </div>
     </div>
 
+    <!-- Bottom Navigation for Mobile -->
+    <nav class="mobile-bottom-nav">
+        <a onclick="switchView('dashboard')" id="bottom-nav-dashboard" class="bottom-nav-item active">
+            <i class="fas fa-chart-line"></i>
+            <span>Dash</span>
+        </a>
+        <a onclick="switchView('contributions')" id="bottom-nav-contributions" class="bottom-nav-item">
+            <i class="fas fa-coins"></i>
+            <span>Pay</span>
+        </a>
+        <a onclick="switchView('members')" id="bottom-nav-members" class="bottom-nav-item">
+            <i class="fas fa-users"></i>
+            <span>Users</span>
+        </a>
+        <a onclick="switchView('cases')" id="bottom-nav-cases" class="bottom-nav-item">
+            <i class="fas fa-briefcase"></i>
+            <span>Cases</span>
+        </a>
+        <a onclick="toggleSidebar()" class="bottom-nav-item">
+            <i class="fas fa-bars"></i>
+            <span>Menu</span>
+        </a>
+    </nav>
+
     <div id="toast-container" class="toast-container"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, orderBy, query, limit, where, deleteDoc, doc, updateDoc, getDoc, enableIndexedDbPersistence, onSnapshot, setDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, orderBy, query, limit, where, deleteDoc, doc, updateDoc, getDoc, enableIndexedDbPersistence, onSnapshot, setDoc, runTransaction, arrayUnion, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
@@ -1158,6 +1337,63 @@
         
         // Enable offline persistence to ensure emails are queued even if network fails temporarily
         enableIndexedDbPersistence(db).catch((err) => console.log("Persistence error:", err.code));
+
+        // Permission Definitions
+        const ALL_PERMISSIONS = [
+            { id: 'SUPER_ADMIN', label: 'Super Admin (All Rights)' },
+            { id: 'ANNOUNCEMENT_WRITE', label: 'Manage Announcements' },
+            { id: 'MEETING_WRITE', label: 'Manage Meetings' },
+            { id: 'CONTRIBUTION_WRITE', label: 'Manage Contributions' },
+            { id: 'CONTRIBUTION_EXPORT', label: 'Export Contributions' },
+            { id: 'EXPENDITURE_WRITE', label: 'Manage Expenditures' },
+            { id: 'EXPENDITURE_EXPORT', label: 'Export Expenditures' },
+            { id: 'MEMBER_CREATE', label: 'Create Members' },
+            { id: 'MEMBER_EDIT', label: 'Edit Members' },
+            { id: 'MEMBER_DELETE', label: 'Delete Members' },
+            { id: 'MEMBER_EXPORT', label: 'Export Members' },
+            { id: 'REGISTRATION_MANAGE', label: 'Manage Registrations' },
+            { id: 'CASE_WRITE', label: 'Manage Cases' },
+            { id: 'CASE_DELETE', label: 'Delete Cases' },
+            { id: 'INQUIRY_MANAGE', label: 'Manage Inquiries' },
+            { id: 'INQUIRY_DELETE', label: 'Delete Inquiries' },
+            { id: 'EMAIL_MANAGE', label: 'Manage Mail Queue' },
+            { id: 'EMAIL_SEND', label: 'Send Emails' },
+            { id: 'LOGS_EXPORT', label: 'Export Logs' },
+            { id: 'LOGS_DELETE', label: 'Delete Logs' },
+            { id: 'DOWNLOAD_WRITE', label: 'Manage Downloads' },
+            { id: 'ADMIN_MANAGE', label: 'Manage Admins (RBAC)' }
+        ];
+
+        window.renderPermissionCheckboxes = (containerId, selected = []) => {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            container.innerHTML = ALL_PERMISSIONS.map(p => `
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <input type="checkbox" id="${containerId}-${p.id}" value="${p.id}" class="perm-checkbox" ${selected.includes(p.id) ? 'checked' : ''} onchange="handleSuperAdminToggle('${containerId}', this)">
+                    <label for="${containerId}-${p.id}" style="margin:0; font-weight:normal; font-size:0.9rem; cursor:pointer;">${p.label}</label>
+                </div>
+            `).join('');
+            
+            const superCheck = document.getElementById(`${containerId}-SUPER_ADMIN`);
+            if (superCheck && superCheck.checked) handleSuperAdminToggle(containerId, superCheck);
+        };
+
+        window.handleSuperAdminToggle = (containerId, checkbox) => {
+            if (checkbox.value !== 'SUPER_ADMIN') return;
+            const checkboxes = document.querySelectorAll(`#${containerId} .perm-checkbox`);
+            checkboxes.forEach(cb => {
+                if (cb.value !== 'SUPER_ADMIN') {
+                    cb.disabled = checkbox.checked;
+                    if (checkbox.checked) cb.checked = true;
+                }
+            });
+        };
+
+        window.getSelectedPermissions = (containerId) => {
+            const checkboxes = document.querySelectorAll(`#${containerId} .perm-checkbox:checked`);
+            return Array.from(checkboxes).map(cb => cb.value);
+        };
 
         // Helper: Safe Retry Transaction
         const retryMailTransaction = async (docId, source = "MANUAL") => {
@@ -1205,14 +1441,24 @@
         let allMembersCache = []; // Cache for search
         let allRegistrationsCache = []; // Cache for registrations
         let allContributionsCache = []; // Cache for contributions
+        let membersUnsubscribe = null;
         let allCasesCache = []; // Cache for cases
         let allInquiriesCache = []; // Cache for inquiries
         let allMeetingsCache = []; // Cache for meetings
         let allLogsCache = []; // Cache for logs
+        let allNotificationsCache = []; // Cache for notifications
         let mailUnsubscribe = null; // Real-time listener for mail
         let currentCaseStatusFilter = 'ALL';
+        let charts = {
+            contributions: null,
+        };
         let currentUserRole = null; // Store current admin role
+        let currentUserPermissions = []; // Changed from currentUserRole
         let currentAdmin = null; // Store full admin object
+
+        // Case Management Constants
+        const REQUIRED_APPROVALS = 2; // Number of unique admin approvals needed for a case
+        const CASE_SLA_THRESHOLDS = { 'RECEIVED': 1, 'IN_REVIEW': 3, 'PENDING_APPROVAL': 2, 'DISBURSAL_PENDING': 1 }; // Days
 
         // RBAC Definitions
         const PERMISSIONS = {
@@ -1233,18 +1479,19 @@
         };
 
         // Check Permission
+        // Update Permission Check
         window.can = (action) => {
-            if (!currentUserRole) return false;
-            if (currentUserRole === 'super_admin') return true;
-            
-            const allowed = PERMISSIONS[currentUserRole] || [];
-            return allowed.includes(action);
+            if (!currentUserPermissions) return false;
+
+            // Super Admin has all rights
+            if (currentUserPermissions.includes('SUPER_ADMIN')) return true;
+            return currentUserPermissions.includes(action);
         }
 
         // Require Permission (Guard)
         window.require = (action) => {
             if (!can(action)) {
-                showToast("You don't have permission to do this.", 'error');
+                showToast(`Permission Denied: ${action}`, 'error');
                 return false;
             }
             return true;
@@ -1266,12 +1513,26 @@
                 let isAuthorized = false;
 
                 querySnapshot.forEach((doc) => {
-                    const role = doc.data().role;
-                    if (['super_admin', 'finance_admin', 'welfare_admin', 'admin'].includes(role)) {
-                        isAuthorized = true;
-                        currentUserRole = role === 'admin' ? 'super_admin' : role; // Legacy 'admin' maps to super_admin or handle as needed
-                        currentAdmin = { uid: doc.id, ...doc.data() };
+                    const data = doc.data();
+                    if (data.permissions) {
+                        currentUserPermissions = data.permissions;
+                    } else if (data.role) {
+                        // Migration path: if only role exists, map it to permissions
+                    currentUserPermissions = data.permissions || [];
+                    
+                    // Migration path: if only legacy 'role' exists, map it to permissions array
+                    if (currentUserPermissions.length === 0 && data.role) {
+                        const legacyMap = {
+                            super_admin: ['SUPER_ADMIN'],
+                            admin: ['SUPER_ADMIN'],
+                            finance_admin: ['CONTRIBUTION_WRITE', 'CONTRIBUTION_EXPORT', 'EXPENDITURE_WRITE', 'EXPENDITURE_EXPORT', 'LOGS_EXPORT'],
+                            welfare_admin: ['ANNOUNCEMENT_WRITE', 'MEETING_WRITE', 'REGISTRATION_MANAGE', 'CASE_WRITE', 'INQUIRY_MANAGE', 'DOWNLOAD_WRITE']
+                        };
+                        currentUserPermissions = legacyMap[data.role] || [];
                     }
+                    }
+                    isAuthorized = currentUserPermissions.length > 0;
+                    currentAdmin = { uid: doc.id, ...data };
                 });
 
                 if (!isAuthorized) {
@@ -1284,11 +1545,15 @@
                 loginSection.style.display = 'none';
                 dashboardSection.style.display = 'block';
                 document.getElementById('user-email').textContent = user.email;
-                document.getElementById('user-role-badge').textContent = currentUserRole.replace('_', ' ');
-                loadData();
+                document.getElementById('user-role-badge').textContent = currentUserPermissions.includes('SUPER_ADMIN') ? 'SUPER ADMIN' : 'ADMIN';
+                
+                setupMemberListener(); // Start persistent sync
+                setupNotificationListener();
+                loadData(); // Initial load for other views
             } else {
                 // Show Login
                 if (mailUnsubscribe) mailUnsubscribe();
+                if (membersUnsubscribe) membersUnsubscribe();
                 loginSection.style.display = 'flex';
                 dashboardSection.style.display = 'none';
                 
@@ -1318,10 +1583,7 @@
         window.hideLoading = () => document.getElementById('loading-overlay').style.display = 'none';
 
         window.formatMoney = (amount) => {
-            if (currentUserRole === 'super_admin') {
-                return `KES ${parseFloat(amount || 0).toLocaleString()}`;
-            }
-            return '---';
+            return `KES ${parseFloat(amount || 0).toLocaleString()}`;
         }
 
         window.handleAdminLogin = (e) => {
@@ -1385,6 +1647,7 @@
         }
 
         window.openModal = (id) => {
+            if (id === 'modal-add-admin') renderPermissionCheckboxes('add-admin-permissions-list');
             document.getElementById(id).classList.add('active');
         }
 
@@ -1395,19 +1658,184 @@
         window.switchView = (viewName) => {
             document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
             document.getElementById(`view-${viewName}`).style.display = 'block';
+            
+            // Sidebar Active State
             document.querySelectorAll('.sidebar-menu a').forEach(el => el.classList.remove('active'));
-            document.getElementById(`nav-${viewName}`).classList.add('active');
-            loadData(); // Refresh data on switch
+            const sideNav = document.getElementById(`nav-${viewName}`);
+            if (sideNav) sideNav.classList.add('active');
+
+            // Bottom Nav Active State
+            document.querySelectorAll('.bottom-nav-item').forEach(el => el.classList.remove('active'));
+            const bottomNav = document.getElementById(`bottom-nav-${viewName}`);
+            if (bottomNav) bottomNav.classList.add('active');
+            
+            // Update Header Title
+            document.getElementById('active-view-title').textContent = viewName.charAt(0).toUpperCase() + viewName.slice(1).replace('-', ' ');
+            
+            if (viewName !== 'dashboard') loadData(); // Only reload if not dashboard to save resources
             
             // Close sidebar on mobile
             if(window.innerWidth <= 768) {
                 document.querySelector('.sidebar').classList.remove('active');
+                document.querySelector('.sidebar-overlay').classList.remove('active');
             }
+        }
+
+        window.showArrearsList = () => {
+            switchView('members');
+            document.getElementById('member-filter-status').value = 'Pending';
+            applyMemberFilters();
         }
 
         window.toggleSidebar = () => {
             document.querySelector('.sidebar').classList.toggle('active');
+            document.querySelector('.sidebar-overlay').classList.toggle('active');
         }
+
+        // Global variable to store the unsubscribe function for the notification listener
+        let notificationUnsubscribe = null;
+
+        const setupNotificationListener = () => {
+            if (notificationUnsubscribe) {
+                notificationUnsubscribe(); // Unsubscribe from previous listener if exists
+            }
+
+            const notificationsRef = collection(db, "notifications");
+            // Order by createdAt descending and limit to recent notifications
+            const q = query(notificationsRef, orderBy("createdAt", "desc"), limit(10)); 
+
+            notificationUnsubscribe = onSnapshot(q, (snapshot) => {
+                allNotificationsCache = [];
+                let unreadCount = 0;
+                const notificationDropdowns = document.querySelectorAll('.notification-dropdown');
+                let dropdownHTML = '';
+
+                snapshot.forEach(doc => {
+                    const notification = { id: doc.id, ...doc.data() };
+                    allNotificationsCache.push(notification);
+
+                    const isRead = notification.readBy && notification.readBy.includes(auth.currentUser.email);
+                    if (!isRead) {
+                        unreadCount++;
+                    }
+
+                    const itemClass = isRead ? '' : 'unread';
+                    const icon = notification.type === 'NEW_ANNOUNCEMENT' ? '📢' :
+                                 notification.type === 'NEW_MEETING' ? '🗓️' :
+                                 notification.type === 'NEW_REGISTRATION' ? '👥' :
+                                 notification.type === 'CASE_APPROVAL_NEEDED' ? '⚠️' :
+                                 notification.type === 'CASE_APPROVED' ? '✅' :
+                                 notification.type === 'CASE_REJECTED' ? '❌' :
+                                 notification.type === 'CASE_DISBURSED' ? '💸' :
+                                 '🔔';
+
+                    dropdownHTML += `
+                        <div class="notification-item ${itemClass}" onclick="handleNotificationClick('${notification.id}', '${notification.link || ''}')">
+                            <span class="icon">${icon}</span>
+                            <div>
+                                <div style="font-size:0.9rem;">${notification.message}</div>
+                                <div style="font-size:0.75rem; color:#888;">${new Date(notification.createdAt).toLocaleString()}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                document.querySelectorAll('.notification-count').forEach(el => el.textContent = unreadCount);
+                notificationDropdowns.forEach(dropdown => {
+                    dropdown.innerHTML = dropdownHTML || '<div class="notification-item" style="justify-content:center; color:#888;">No new notifications</div>';
+                    
+                    if (unreadCount > 0) {
+                        dropdown.innerHTML += `
+                            <div class="notification-item" style="justify-content:center; background:#f0f0f0; cursor:pointer;" onclick="markAllNotificationsAsRead()">
+                                <i class="fas fa-check-double" style="color:var(--primary);"></i> Mark all as read
+                            </div>
+                        `;
+                    }
+                });
+            });
+        };
+
+        const setupMemberListener = () => {
+            if (membersUnsubscribe) membersUnsubscribe();
+            const qMem = query(collection(db, "members"), orderBy("name"));
+            
+            membersUnsubscribe = onSnapshot(qMem, (snapshot) => {
+                allMembersCache = [];
+                snapshot.forEach(doc => {
+                    allMembersCache.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Instant KPI Update
+                const activeCount = allMembersCache.filter(m => (m.status || 'Active') === 'Active').length;
+                const dashActiveMembers = document.getElementById('dash-active-members');
+                if (dashActiveMembers) dashActiveMembers.textContent = activeCount;
+                
+                // Refresh UI if on members view
+                if (document.getElementById('view-members').style.display !== 'none') {
+                    applyMemberFilters();
+                }
+            });
+        };
+
+        window.toggleNotifications = (event) => {
+            event.stopPropagation(); // Prevent document click from immediately closing
+            const bell = event.currentTarget;
+            const dropdown = bell.querySelector('.notification-dropdown');
+            if (dropdown) dropdown.classList.toggle('active');
+        };
+
+        // Close dropdown if clicked outside
+        document.addEventListener('click', (event) => {
+            document.querySelectorAll('.notification-dropdown').forEach(dropdown => {
+                const bell = dropdown.closest('.notification-bell');
+                if (dropdown.classList.contains('active') && !dropdown.contains(event.target) && !bell.contains(event.target)) {
+                    dropdown.classList.remove('active');
+                }
+            });
+        });
+
+        window.handleNotificationClick = async (notificationId, link) => {
+            await markNotificationAsRead(notificationId);
+            if (link) {
+                const viewName = link.replace('#view-', '');
+                switchView(viewName);
+            }
+            document.querySelectorAll('.notification-dropdown').forEach(d => d.classList.remove('active'));
+        };
+
+        const markNotificationAsRead = async (notificationId) => {
+            const notificationRef = doc(db, "notifications", notificationId);
+            const adminEmail = auth.currentUser.email;
+            try {
+                await updateDoc(notificationRef, {
+                    readBy: arrayUnion(adminEmail) // Use arrayUnion to add adminEmail to readBy array
+                });
+            } catch (e) {
+                console.error("Error marking notification as read:", e);
+            }
+        };
+
+        window.markAllNotificationsAsRead = async () => {
+            const adminEmail = auth.currentUser.email;
+            const batch = writeBatch(db); // Use a batch write for efficiency
+
+            allNotificationsCache.forEach(notification => {
+                if (!notification.readBy || !notification.readBy.includes(adminEmail)) {
+                    const notificationRef = doc(db, "notifications", notification.id);
+                    batch.update(notificationRef, {
+                        readBy: arrayUnion(adminEmail)
+                    });
+                }
+            });
+
+            try {
+                await batch.commit();
+                showToast("All notifications marked as read.");
+            } catch (e) {
+                console.error("Error marking all notifications as read:", e);
+                showToast("Failed to mark all notifications as read.", 'error');
+            }
+        };
 
         // Helper: Log Activity
         const logActivity = async (action, details) => {
@@ -1424,7 +1852,7 @@
 
         window.deleteLog = async (id) => {
             if (!require('LOGS_DELETE')) return; // Usually super_admin only
-            if (currentUserRole !== 'super_admin') {
+            if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can delete records.", 'error');
                 return;
             }
@@ -1457,13 +1885,13 @@
                     );
                 } else {
                     // Default: Last 20 logs
-                    qLogs = query(collection(db, "logs"), orderBy("when", "desc"), limit(20));
+                    qLogs = query(collection(db, "logs"), orderBy("when", "desc"), limit(7));
                 }
 
                 const logsSnap = await getDocs(qLogs);
                 let logsHTML = '';
                 allLogsCache = [];
-
+                
                 if (logsSnap.empty) {
                     logsTable.innerHTML = '<tr><td colspan="5">No activity recorded for this period.</td></tr>';
                     return;
@@ -1573,6 +2001,15 @@
                 await logActivity("ADD_ANNOUNCEMENT", { title });
                 showToast('Announcement Posted!');
                 e.target.reset();
+                
+                // Add notification for new announcement
+                await addDoc(collection(db, "notifications"), {
+                    type: "NEW_ANNOUNCEMENT",
+                    message: `New announcement: "${title}"`,
+                    link: "#view-announcements",
+                    createdAt: new Date().toISOString(),
+                    readBy: []
+                });
                 closeModal('modal-announcement');
             } catch (err) { showToast("Error: " + err.message, 'error'); }
             finally { hideLoading(); submitBtn.disabled = false; }
@@ -1592,8 +2029,8 @@
         }
 
         window.deleteAllAnnouncements = async () => {
-            if (!require('ANNOUNCEMENT_DELETE_ALL')) return; // Implicitly super_admin check inside require if mapped
-            if (currentUserRole !== 'super_admin') {
+            if (!require('ANNOUNCEMENT_WRITE')) return;
+            if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can delete all records.", 'error');
                 return;
             }
@@ -1680,6 +2117,15 @@
                 await logActivity("SCHEDULE_MEETING", { title, dateTime });
                 e.target.reset();
                 closeModal('modal-schedule-meeting');
+
+                // Add notification for new meeting
+                await addDoc(collection(db, "notifications"), {
+                    type: "NEW_MEETING",
+                    message: `New meeting scheduled: "${title}"`,
+                    link: "#view-meetings",
+                    createdAt: new Date().toISOString(),
+                    readBy: []
+                });
                 await loadData();
             } catch (err) {
                 showToast("Error: " + err.message, 'error');
@@ -1786,6 +2232,15 @@
                 await logActivity("ADD_CONTRIBUTION", { email, amount, month });
                 showToast('Contribution Recorded!');
                 e.target.reset();
+
+                // Add notification for new contribution (optional, usually not needed for admin)
+                // await addDoc(collection(db, "notifications"), {
+                //     type: "NEW_CONTRIBUTION",
+                //     message: `New contribution from ${memberName} for ${month}`,
+                //     link: "#view-contributions",
+                //     createdAt: new Date().toISOString(),
+                //     readBy: []
+                // });
                 clearContSelection(); // Reset search state
                 closeModal('modal-contribution');
             } catch (err) { showToast("Error: " + err.message, 'error'); }
@@ -1881,7 +2336,7 @@
         // 2b. Edit/Delete Contribution
         window.deleteContribution = async (id) => {
             if (!require('CONTRIBUTION_WRITE')) return;
-            if (currentUserRole !== 'super_admin') {
+            if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can delete records.", 'error');
                 return;
             }
@@ -2169,7 +2624,7 @@
 
         window.deleteEmail = async (id) => {
             if (!require('EMAIL_MANAGE')) return;
-            if (currentUserRole !== 'super_admin') {
+            if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can delete records.", 'error');
                 return;
             }
@@ -2201,7 +2656,7 @@
 
         window.deleteSelectedEmails = async () => {
             if (!require('EMAIL_MANAGE')) return;
-            if (currentUserRole !== 'super_admin') {
+            if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can delete records.", 'error');
                 return;
             }
@@ -2302,6 +2757,15 @@
                 await logActivity("ADD_MEMBER", { name, email, memberId });
                 if (authCreated) {
                     showToast('Member Account Created Successfully!');
+                    // Add notification for new member
+                    await addDoc(collection(db, "notifications"), {
+                        type: "NEW_REGISTRATION",
+                        message: `New member: ${name} (${email})`,
+                        link: "#view-members",
+                        relatedDocId: memberId, // Assuming memberId is unique and can be used to link
+                        createdAt: new Date().toISOString(),
+                        readBy: []
+                    });
                 } else {
                     showToast('Member Added to Database (Email already in Auth).');
                 }
@@ -2322,7 +2786,7 @@
         // 5. Delete Member (Soft Delete)
         window.deleteMember = async (id) => {
             if (!require('MEMBER_DELETE')) return;
-            if (currentUserRole !== 'super_admin') {
+            if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can delete records.", 'error');
                 return;
             }
@@ -2341,7 +2805,7 @@
 
         window.restoreMember = async (id) => {
             if (!require('MEMBER_DELETE')) return;
-            if (currentUserRole !== 'super_admin') {
+            if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can restore records.", 'error');
                 return;
             }
@@ -2360,7 +2824,7 @@
 
         window.permanentDeleteMember = async (id) => {
              if (!require('MEMBER_DELETE')) return;
-             if (currentUserRole !== 'super_admin') {
+             if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can delete records.", 'error');
                 return;
             }
@@ -2400,16 +2864,84 @@
             if (!m) return;
 
             document.getElementById('hist-mem-name').textContent = `${m.name} (${m.memberId || '-'})`;
-            const history = allContributionsCache.filter(c => c.email === m.email);
+            const memberContributions = allContributionsCache.filter(c => 
+                c.email && m.email && c.email.toLowerCase() === m.email.toLowerCase()
+            );
             
             const tbody = document.getElementById('hist-table-body');
-            tbody.innerHTML = history.length ? history.map(c => `
-                <tr>
-                    <td>${c.date}</td>
-                    <td>${c.month}</td>
-                    <td style="color:green; font-weight:bold;">${formatMoney(c.amount)}</td>
-                </tr>
-            `).join('') : '<tr><td colspan="3">No contributions found.</td></tr>';
+            const rows = []; // This will hold all row objects for sorting
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const today = new Date();
+            const joinedDate = new Date(m.joined || Date.now());
+
+            // Track which months have been paid to identify arrears
+            const paidMonthsSet = new Set(); 
+
+            // 1. Process all actual payments found in the database
+            // Sort memberContributions by paidDate descending to ensure latest payments are processed first for a given month
+            memberContributions.forEach(c => {
+                const paidDate = c.paidAt ? (c.paidAt.toDate ? c.paidAt.toDate() : new Date(c.paidAt)) : new Date(c.date);
+                const monthIndex = monthNames.findIndex(mn => mn.toLowerCase() === (c.month || "").toLowerCase());
+                
+                let displayMonth = c.month || 'Other Payment';
+                let statusText = "Paid"; // Always "Paid"
+                let statusColor = "green";
+                
+                // If it's a standard monthly contribution, track it for arrears logic
+                if (monthIndex !== -1 && c.month !== "Registration Fee") {
+                    const year = paidDate.getFullYear();
+                    const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+                    paidMonthsSet.add(monthKey);
+                    displayMonth = `${c.month} ${year}`;
+                } else if (c.month === "Registration Fee") {
+                    statusColor = "#C9A24D"; // Gold for registration
+                } 
+
+                // Push the actual DB record to the rows array
+                rows.push({
+                    date: paidDate,
+                    html: `<tr>
+                        <td>${paidDate.toLocaleDateString()}</td>
+                        <td>${displayMonth}</td>
+                        <td style="color:${statusColor}; font-weight:bold;">${formatMoney(c.amount)}</td>
+                        <td><span style="color:${statusColor};">${statusText}</span></td>
+                    </tr>`
+                });
+            });
+            
+            // 2. Identify missing payments (Arrears) from Join Date to Now
+            let currentMonthIterator = new Date(joinedDate.getFullYear(), joinedDate.getMonth(), 1);
+            while (currentMonthIterator <= today) {
+                const year = currentMonthIterator.getFullYear();
+                const monthIndex = currentMonthIterator.getMonth();
+                const monthName = monthNames[monthIndex];
+                const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+                
+                // Only add Arrears if the month has passed the 5th and no payment exists in DB for this key
+                const fifthOfMonth = new Date(year, monthIndex, 5);
+                if (!paidMonthsSet.has(monthKey) && today > fifthOfMonth) {
+                    rows.push({
+                        date: fifthOfMonth,
+                        html: `<tr style="background:rgba(255,0,0,0.02);">
+                            <td>-</td>
+                            <td>${monthName} ${year}</td>
+                            <td style="color:red; font-weight:bold;">${formatMoney(200)}</td>
+                            <td><span style="color:red; font-weight:bold;">Arrears</span></td>
+                        </tr>`
+                    });
+                }
+                currentMonthIterator.setMonth(currentMonthIterator.getMonth() + 1);
+            }
+            
+            // 3. Sort everything by date (Newest at top)
+            rows.sort((a, b) => b.date - a.date);
+
+            if (rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">No contributions or arrears found.</td></tr>';
+            } else {
+                tbody.innerHTML = rows.map(r => r.html).join('');
+            }
             
             openModal('modal-member-history');
         }
@@ -2671,7 +3203,7 @@
 
         window.rejectRegistration = async (id) => {
             if (!require('REGISTRATION_MANAGE')) return;
-            if (currentUserRole !== 'super_admin') {
+            if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can delete records.", 'error');
                 return;
             }
@@ -2690,7 +3222,7 @@
 
         window.deleteRegistration = async (id) => {
             if (!require('REGISTRATION_MANAGE')) return;
-            if (currentUserRole !== 'super_admin') {
+            if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can delete records.", 'error');
                 return;
             }
@@ -2712,8 +3244,14 @@
             if (!require('ADMIN_MANAGE')) return;
             const email = document.getElementById('admin-email').value.trim();
             const role = document.getElementById('admin-role').value;
+            const permissions = getSelectedPermissions('add-admin-permissions-list');
             const password = document.getElementById('admin-password').value;
             
+            if (permissions.length === 0) {
+                showToast("Please assign at least one permission.", "error");
+                return;
+            }
+
             const submitBtn = e.target.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             showLoading();
@@ -2740,9 +3278,9 @@
                 }
 
                 await addDoc(collection(db, "admins"), {
-                    email, role, addedAt: new Date().toISOString()
+                    email, permissions, addedAt: new Date().toISOString()
                 });
-                await logActivity("ADD_ADMIN", { email, role });
+                await logActivity("ADD_ADMIN", { email, permissions: permissions.join(',') });
                 showToast("Admin added successfully!");
                 e.target.reset();
                 closeModal('modal-add-admin');
@@ -2753,7 +3291,7 @@
 
         window.deleteAdmin = async (id, email) => {
             if (!require('ADMIN_MANAGE')) return;
-            if (currentUserRole !== 'super_admin') {
+            if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can delete records.", 'error');
                 return;
             }
@@ -2772,27 +3310,33 @@
             finally { hideLoading(); }
         }
 
-        window.openEditAdmin = (id, email, role) => {
+        window.openEditAdmin = async (id, email) => {
             if (!require('ADMIN_MANAGE')) return;
-            document.getElementById('edit-admin-id').value = id;
-            document.getElementById('edit-admin-email').value = email;
-            document.getElementById('edit-admin-role').value = role;
-            openModal('modal-edit-admin');
+            try {
+                const docSnap = await getDoc(doc(db, "admins", id));
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    document.getElementById('edit-admin-id').value = id;
+                    document.getElementById('edit-admin-email').value = email;
+                    renderPermissionCheckboxes('edit-admin-permissions-list', data.permissions || []);
+                    openModal('modal-edit-admin');
+                }
+            } catch (e) { showToast("Error: " + e.message, "error"); }
         }
 
         window.updateAdmin = async (e) => {
             e.preventDefault();
             if (!require('ADMIN_MANAGE')) return;
-            if (currentUserRole !== 'super_admin') {
+            if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can edit admin roles.", 'error');
                 return;
             }
             const id = document.getElementById('edit-admin-id').value;
-            const role = document.getElementById('edit-admin-role').value;
+            const permissions = getSelectedPermissions('edit-admin-permissions-list');
             showLoading();
             try {
-                await updateDoc(doc(db, "admins", id), { role });
-                await logActivity("EDIT_ADMIN", { id, role });
+                await updateDoc(doc(db, "admins", id), { permissions });
+                await logActivity("EDIT_ADMIN", { id, permissions: permissions.join(',') });
                 showToast("Admin role updated.");
                 closeModal('modal-edit-admin');
                 await loadData();
@@ -2995,6 +3539,7 @@
                     status: "RECEIVED",
                     createdBy: auth.currentUser.email,
                     createdAt: new Date().toISOString(),
+                    statusChangedAt: new Date().toISOString(), // For SLA tracking
                     caseReference: caseId
                 });
 
@@ -3044,7 +3589,7 @@
 
         window.deleteCase = async (id) => {
             if (!require('CASE_DELETE')) return; // Usually super_admin
-            if (currentUserRole !== 'super_admin') {
+            if (!can('SUPER_ADMIN')) {
                 showToast("Only Super Admins can delete cases.", 'error');
                 return;
             }
@@ -3117,10 +3662,21 @@
                 if (c.status === 'DISBURSED') statusColor = '#1565c0';
                 if (c.status === 'IN_REVIEW') statusColor = 'orange';
 
+                // SLA Tracking
+                const statusChangedDate = new Date(c.statusChangedAt || c.createdAt);
+                const daysInStatus = Math.floor((new Date() - statusChangedDate) / (1000 * 60 * 60 * 24));
+                let slaText = '';
+                let slaColor = '';
+                if (CASE_SLA_THRESHOLDS[c.status] && daysInStatus > CASE_SLA_THRESHOLDS[c.status]) {
+                    slaText = `Overdue (${daysInStatus} days)`;
+                    slaColor = 'color:red; font-weight:bold;';
+                } else if (daysInStatus > 0) {
+                    slaText = `Pending (${daysInStatus} days)`;
+                }
                 const displayId = c.id.startsWith('WF-') ? c.id : c.id.substr(0,8) + '...';
                 
                 let deleteBtn = '';
-                if (currentUserRole === 'super_admin') {
+                if (can('SUPER_ADMIN')) {
                     deleteBtn = `<button class="action-btn btn-delete ${getDisabledClass('CASE_DELETE')}" onclick="deleteCase('${c.id}')" style="margin-left:5px;">Delete</button>`;
                 }
 
@@ -3129,6 +3685,7 @@
                     <td>${c.memberName}</td>
                     <td>${c.type} - ${c.subtype}</td>
                     <td>${formatMoney(c.amount)}</td>
+                    <td><span style="${slaColor}">${c.status} ${slaText ? `(${slaText})` : ''}</span></td>
                     <td><span class="status-badge" style="background:${statusColor}20; color:${statusColor}">${c.status}</span></td>
                     <td>${new Date(c.createdAt).toLocaleDateString()}</td>
                     <td>
@@ -3149,6 +3706,7 @@
             document.getElementById('cd-type').textContent = `${c.type} - ${c.subtype}`;
             document.getElementById('cd-amount').textContent = formatMoney(c.amount);
             document.getElementById('cd-date').textContent = new Date(c.createdAt).toLocaleString();
+            document.getElementById('case-detail-status').className = `status-badge ${c.status === 'APPROVED' ? 'status-active' : (c.status === 'REJECTED' ? 'status-inactive' : '')}`;
             document.getElementById('cd-desc').textContent = c.description;
             document.getElementById('case-detail-status').textContent = c.status;
 
@@ -3186,6 +3744,11 @@
                 return `<div class="list-item"><small>${new Date(u.timestamp).toLocaleString()}</small><br><strong>${u.action}</strong> by ${u.by}<br>${u.note || ''}</div>`;
             }).join('');
 
+            // Display approvals info
+            const approvalsInfoDiv = document.getElementById('case-approvals-info');
+            const currentApprovals = c.approvals ? c.approvals.length : 0;
+            approvalsInfoDiv.textContent = `Approvals: ${currentApprovals} / ${REQUIRED_APPROVALS}`;
+
             // Setup Actions
             const actionsDiv = document.getElementById('case-actions-container');
             let btns = '';
@@ -3196,7 +3759,7 @@
                             <label>Approved Amount (KES)</label>
                             <input type="number" id="approve-amount-${id}" value="${c.amount}" style="font-weight:bold; color:green;">
                         </div>
-                        <button class="btn-action ${getDisabledClass('CASE_WRITE')}" style="background:green; margin-bottom:10px;" onclick="approveCaseWithAmount('${id}')">Approve Case</button>
+                        <button class="btn-action ${getDisabledClass('CASE_WRITE')}" style="background:green; margin-bottom:10px;" onclick="recordCaseApproval('${id}')">Record Approval</button>
                         <button class="btn-action ${getDisabledClass('CASE_WRITE')}" style="background:red;" onclick="updateCaseStatus('${id}', 'REJECTED')">Reject Case</button>`;
             } else if (c.status === 'APPROVED' || c.status === 'DISBURSAL_PENDING') {
                 btns = `<div class="form-group">
@@ -3231,26 +3794,68 @@
             document.getElementById('case-tab-actions').style.display = tab === 'actions' ? 'block' : 'none';
         }
 
-        window.approveCaseWithAmount = (id) => {
+        window.recordCaseApproval = async (id) => {
+            if (!require('CASE_WRITE')) return;
+            const c = allCasesCache.find(x => x.id === id);
+            if (!c) return;
+
             const amountInput = document.getElementById(`approve-amount-${id}`);
             const amount = amountInput ? amountInput.value : null;
             if (!amount || amount <= 0) {
                 showToast("Please enter a valid approved amount", "error");
                 return;
             }
-            updateCaseStatus(id, 'APPROVED', amount);
+
+            showLoading();
+            try {
+                const caseRef = doc(db, "cases", id);
+                await runTransaction(db, async (transaction) => {
+                    const caseDoc = await transaction.get(caseRef);
+                    if (!caseDoc.exists()) throw "Case does not exist!";
+                    const data = caseDoc.data();
+
+                    let currentApprovals = data.approvals || [];
+                    const adminEmail = auth.currentUser.email;
+
+                    if (currentApprovals.some(a => a.adminEmail === adminEmail)) {
+                        showToast("You have already approved this case.", "error");
+                        return; // Exit transaction
+                    }
+
+                    currentApprovals.push({ adminEmail, timestamp: new Date().toISOString() });
+
+                    let newStatus = 'IN_REVIEW'; // Default if not enough approvals
+                    if (currentApprovals.length >= REQUIRED_APPROVALS) {
+                        newStatus = 'APPROVED';
+                    } else {
+                        newStatus = 'PENDING_APPROVAL'; // New status for intermediate approvals
+                    }
+
+                    transaction.update(caseRef, {
+                        status: newStatus,
+                        amount: amount, // Update amount with the latest approved amount
+                        approvals: currentApprovals,
+                        statusChangedAt: new Date().toISOString()
+                    });
+                });
+                showToast("Approval recorded!");
+                closeModal('modal-case-details');
+                await loadData();
+            } catch (e) { showToast("Error recording approval: " + e.message, 'error'); }
+            finally { hideLoading(); }
         }
 
         window.updateCaseStatus = async (id, status, approvedAmount = null) => {
             if (!require('CASE_WRITE')) return;
-            if (!confirm(`Change status to ${status}?`)) return;
+            if (!confirm(`Are you sure you want to change status to ${status}?`)) return;
             showLoading();
             try {
                 const updateData = { status };
                 if (approvedAmount) {
                     updateData.amount = approvedAmount;
                 }
-                await updateDoc(doc(db, "cases", id), updateData);
+                updateData.statusChangedAt = new Date().toISOString(); // Update SLA timestamp
+                await updateDoc(doc(db, "cases", id), updateData); // Update case document
                 await addDoc(collection(db, "cases", id, "updates"), {
                     action: `STATUS_CHANGE_TO_${status}`, by: auth.currentUser.email, timestamp: new Date().toISOString()
                 });
@@ -3259,6 +3864,17 @@
                 if (c && approvedAmount) c.amount = approvedAmount;
 
                 // Queue Email: Approved
+                if (status === 'PENDING_APPROVAL' && c) {
+                    await addDoc(collection(db, "notifications"), {
+                        type: "CASE_APPROVAL_NEEDED",
+                        message: `Case ${c.caseReference} needs more approvals.`,
+                        link: "#view-cases",
+                        relatedDocId: id,
+                        createdAt: new Date().toISOString(),
+                        readBy: []
+                    });
+                }
+
                 if (status === 'APPROVED' && c) {
                         await addDoc(collection(db, "mail"), {
                             to: c.memberEmail,
@@ -3282,6 +3898,15 @@
                         });
                 }
 
+                // Add notification for final approval
+                if (status === 'APPROVED' && c) {
+                    await addDoc(collection(db, "notifications"), {
+                        type: "CASE_APPROVED",
+                        message: `Case ${c.caseReference} has been approved!`,
+                        link: "#view-cases", relatedDocId: id, createdAt: new Date().toISOString(), readBy: []
+                    });
+                }
+
                 // Queue Email: Rejected
                 if (status === 'REJECTED' && c) {
                     await addDoc(collection(db, "mail"), {
@@ -3302,6 +3927,14 @@
                         type: "CASE_REJECTED",
                         status: "PENDING",
                         createdAt: new Date().toISOString()
+                    });
+                }
+                // Add notification for rejection
+                if (status === 'REJECTED' && c) {
+                    await addDoc(collection(db, "notifications"), {
+                        type: "CASE_REJECTED",
+                        message: `Case ${c.caseReference} was rejected.`,
+                        link: "#view-cases", relatedDocId: id, createdAt: new Date().toISOString(), readBy: []
                     });
                 }
 
@@ -3339,6 +3972,15 @@
                         recordedBy: auth.currentUser.email,
                         relatedCaseId: id
                     });
+                // Add notification for disbursal
+                await addDoc(collection(db, "notifications"), {
+                    type: "CASE_DISBURSED",
+                    message: `Funds disbursed for case ${c.caseReference}.`,
+                    link: "#view-cases",
+                    relatedDocId: id,
+                    createdAt: new Date().toISOString(),
+                    readBy: []
+                });
 
                     await addDoc(collection(db, "mail"), {
                     to: c.memberEmail,
@@ -3421,7 +4063,7 @@
             const tableColumn = ["Case ID", "Date", "Member", "Type", "Amount", "Status"];
             const tableRows = [];
 
-            filtered.forEach(c => {
+            filtered.forEach(c => { // Ensure 'c.amount' is used for the report
                 const displayId = c.id.startsWith('WF-') ? c.id : c.id.substr(0,8);
                 tableRows.push([displayId, new Date(c.createdAt).toLocaleDateString(), c.memberName, `${c.type} - ${c.subtype}`, `KES ${c.amount || 0}`, c.status]);
             });
@@ -3690,8 +4332,7 @@
 
             // Data is already sorted by date descending from Firestore query
             
-            const contributionsToRender = search.length === 0 ? filtered.slice(0, 3) : filtered;
-            renderContributionsTable(contributionsToRender, filtered.length);
+            renderContributionsTable(filtered, filtered.length);
         }
 
         window.renderContributionsTable = (contributions, totalFilteredCount) => {
@@ -3718,10 +4359,6 @@
                 </tr>`;
             }).join('');
 
-            const search = document.getElementById('contribution-search').value.toLowerCase();
-            if (search.length === 0 && totalFilteredCount > 3) {
-                html += `<tr><td colspan="6" style="text-align:center; color:#666; font-style:italic; padding:15px;">Showing 3 of ${totalFilteredCount} contributions. Use search to find more.</td></tr>`;
-            }
             contTable.innerHTML = html;
         }
 
@@ -3761,6 +4398,9 @@
                 let matchesStatus = false;
                 const s = m.status || 'Active';
                 if (statusFilter === 'all') matchesStatus = s !== 'Archived';
+                else if (statusFilter === 'Pending') {
+                    matchesStatus = s === 'Active' && getArrearsCount(m.email) > 0;
+                }
                 else matchesStatus = s === statusFilter;
 
                 return matchesSearch && matchesStatus;
@@ -3774,8 +4414,7 @@
             }
 
             // If no search term is provided, show only the first 3 members.
-            const membersToRender = search.length === 0 ? filtered.slice(0, 3) : filtered;
-            renderMembersTable(membersToRender, filtered.length);
+            renderMembersTable(filtered, filtered.length);
         }
 
         window.renderMembersTable = (members, totalFilteredCount) => {
@@ -3825,17 +4464,58 @@
                 </tr>`;
             }).join('');
 
-            const search = document.getElementById('member-search').value.toLowerCase();
-            if (search.length === 0 && totalFilteredCount > 3) {
-                html += `
-                    <tr>
-                        <td colspan="8" style="text-align:center; color:#666; font-style:italic; padding:15px;">
-                            Showing 3 of ${totalFilteredCount} members. Use search to find more.
-                        </td>
-                    </tr>
-                `;
-            }
             memTable.innerHTML = html;
+        }
+
+        // Premium Charts Logic
+        window.updatePremiumDashboard = () => {
+            // 1. Contribution Trend Chart
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const last6Months = [];
+            for (let i = 5; i >= 0; i--) {
+                let d = new Date();
+                d.setMonth(d.getMonth() - i);
+                last6Months.push(monthNames[d.getMonth()]);
+            }
+
+            const monthlyData = last6Months.map(m => {
+                return allContributionsCache
+                    .filter(c => c.month === m)
+                    .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
+            });
+
+            if (charts.contributions) charts.contributions.destroy();
+            const contCtx = document.getElementById('contributionChart')?.getContext('2d');
+            if (contCtx) {
+                charts.contributions = new Chart(contCtx, {
+                    type: 'line',
+                    data: {
+                        labels: last6Months,
+                        datasets: [{
+                            label: 'Contributions (KES)',
+                            data: monthlyData,
+                            borderColor: '#6B0F1A',
+                            backgroundColor: 'rgba(107, 15, 26, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#C9A24D'
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } }, 
+                        scales: { 
+                            y: { beginAtZero: true, grid: { display: false } }, 
+                            x: { grid: { display: false } } 
+                        } 
+                    }
+                });
+            }
+            // Update dynamic members KPI
+            document.getElementById('dash-active-members').textContent = allMembersCache.filter(m => m.status === 'Active').length;
         }
 
         // Load Data for Admin View
@@ -3936,6 +4616,7 @@
             
             // This will render the table
             applyContributionFilters();
+            updatePremiumDashboard();
 
             // 3c. Expenditures
             const qExp = query(collection(db, "expenditures"), orderBy("date", "desc"));
@@ -3983,14 +4664,6 @@
             });
             const paidCount = uniquePaidEmails.size;
 
-            // 5. Members (Fetch first to get total count for stats)
-            const qMem = query(collection(db, "members"), orderBy("name"));
-            const memSnap = await getDocs(qMem);
-            allMembersCache = []; // Reset cache
-            memSnap.forEach(doc => {
-                allMembersCache.push({ id: doc.id, ...doc.data() });
-            });
-
             // Update Stats UI
             const activeMembers = allMembersCache.filter(m => (m.status || 'Active') === 'Active');
             const totalActiveMembers = activeMembers.length;
@@ -4007,12 +4680,8 @@
             
             const statCollected = document.getElementById('stat-collected');
             if(statCollected) {
-                if (currentUserRole === 'super_admin') {
-                    statCollected.parentElement.style.display = 'block';
-                    statCollected.textContent = `KES ${totalCollected.toLocaleString()}`;
-                } else {
-                    statCollected.parentElement.style.display = 'none';
-                }
+                statCollected.parentElement.style.display = 'block';
+                statCollected.textContent = `KES ${totalCollected.toLocaleString()}`;
             }
             
             const statPaid = document.getElementById('stat-paid');
@@ -4024,7 +4693,7 @@
             // Update Dashboard View Stats
             const dashCollectedMonth = document.getElementById('dash-collected-month');
             if(dashCollectedMonth) {
-                if (currentUserRole === 'super_admin') {
+                if (can('SUPER_ADMIN')) {
                     dashCollectedMonth.previousElementSibling.textContent = 'Collected (This Month)';
                     dashCollectedMonth.textContent = `KES ${totalCollected.toLocaleString()}`;
                 } else {
@@ -4035,7 +4704,7 @@
 
             const dashCollectedTotal = document.getElementById('dash-collected-total');
             if(dashCollectedTotal) {
-                if (currentUserRole === 'super_admin') {
+                if (can('SUPER_ADMIN')) {
                     dashCollectedTotal.previousElementSibling.textContent = 'Total Collected';
                     dashCollectedTotal.textContent = `KES ${totalCollectedAllTime.toLocaleString()}`;
                 } else {
@@ -4046,7 +4715,7 @@
 
             const dashTotalSpent = document.getElementById('dash-total-spent');
             if(dashTotalSpent) {
-                if (currentUserRole === 'super_admin') {
+                if (can('SUPER_ADMIN')) {
                     dashTotalSpent.previousElementSibling.textContent = 'Total Spent';
                     dashTotalSpent.textContent = `KES ${totalSpent.toLocaleString()}`;
                 } else {
@@ -4057,17 +4726,11 @@
 
             const dashNetBalance = document.getElementById('dash-net-balance');
             if(dashNetBalance) {
-                if (currentUserRole === 'super_admin') {
-                    dashNetBalance.parentElement.style.display = 'block';
-                    dashNetBalance.textContent = `KES ${(totalCollectedAllTime - totalSpent).toLocaleString()}`;
-                } else {
-                    dashNetBalance.parentElement.style.display = 'none';
-                }
+                dashNetBalance.textContent = formatMoney(totalCollectedAllTime - totalSpent);
             }
-
             const dashArrearsMonth = document.getElementById('dash-arrears-month');
             if(dashArrearsMonth) {
-                if (currentUserRole === 'super_admin') {
+                if (can('SUPER_ADMIN')) {
                     dashArrearsMonth.previousElementSibling.textContent = 'Arrears (This Month)';
                     dashArrearsMonth.innerHTML = `KES ${arrearsValue.toLocaleString()} <span style="font-size:0.9rem; color:#666; font-weight:normal;">(${membersInArrears} members)</span>`;
                 } else {
@@ -4095,18 +4758,27 @@
                     }
 
                     let statusColor = '#888';
-                    if(displayStatus === 'SUCCESS') statusColor = 'green';
-                    if(displayStatus === 'ERROR' || displayStatus === 'FAILED') statusColor = 'red';
-                    if(displayStatus === 'PENDING' || displayStatus === 'PROCESSING') statusColor = 'orange';
-                    if(displayStatus === 'RETRIED_AUTO') statusColor = '#999';
+                    let statusIcon = '';
+                    if(displayStatus === 'DELIVERED') { statusColor = 'green'; statusIcon = '📩 Delivered'; }
+                    else if(displayStatus === 'SENT') { statusColor = 'green'; statusIcon = '✅ Sent'; }
+                    else if(displayStatus === 'ERROR' || displayStatus === 'FAILED' || displayStatus === 'BOUNCED' || displayStatus === 'COMPLAINED') { statusColor = 'red'; statusIcon = '❌ Failed'; }
+                    else if(displayStatus === 'PENDING' || displayStatus === 'PROCESSING') { statusColor = 'orange'; statusIcon = '⏳ Pending'; }
+                    else if(displayStatus === 'RETRIED_AUTO' || displayStatus === 'ARCHIVED_RETRY') { statusColor = '#999'; statusIcon = '🔄 Retried'; }
+                    else { statusIcon = displayStatus; }
+
+                    // Fallback for older records without delivery status
+                    if (!m.delivery && m.status === 'SUCCESS') {
+                        statusIcon = '✅ Sent';
+                        statusColor = 'green';
+                    }
 
                     mailHTML += `
                     <tr>
                         <td><input type="checkbox" class="mail-checkbox" value="${doc.id}" onclick="updateMailBulkActionState()"></td>
                         <td>${m.to}</td>
                         <td>${m.message?.subject || 'No Subject'}</td>
-                        <td>${m.type}</td>
-                        <td><span style="color:${statusColor}; font-weight:bold;">${displayStatus}</span></td>
+                        <td>${m.type || 'N/A'}</td>
+                        <td><span style="color:${statusColor}; font-weight:bold;">${statusIcon}</span></td>
                         <td>${dateStr}</td>
                         <td>${m.attempts || 0}</td>
                         <td>
@@ -4116,7 +4788,6 @@
                     </tr>`;
                 });
                 const mailTable = document.getElementById('mail-queue-table-body');
-                if(mailTable) mailTable.innerHTML = mailHTML || '<tr><td colspan="7">No mail items found.</td></tr>';
                 if(mailTable) mailTable.innerHTML = mailHTML || '<tr><td colspan="8">No mail items found.</td></tr>';
                 
                 const selectAll = document.getElementById('mail-select-all');
@@ -4134,13 +4805,16 @@
             adminSnap.forEach(doc => {
                 const a = doc.data();
                 const dateStr = a.addedAt ? new Date(a.addedAt).toLocaleDateString() : '-';
+                const perms = a.permissions || (a.role ? [a.role] : []);
+                const permBadges = perms.map(p => `<span class="status-badge" style="background:#e3f2fd; color:#1565c0; font-size:0.7rem; margin:1px;">${p}</span>`).join(' ');
+
                 adminHTML += `
                 <tr>
                     <td>${a.email}</td>
-                    <td><span class="status-badge" style="background:#e3f2fd; color:#1565c0;">${a.role}</span></td>
+                    <td><div style="display:flex; flex-wrap:wrap; max-width:300px;">${permBadges}</div></td>
                     <td>${dateStr}</td>
                     <td>
-                        <button class="action-btn ${getDisabledClass('ADMIN_MANAGE')}" style="background:#fff3e0; color:#ef6c00;" onclick="openEditAdmin('${doc.id}', '${a.email}', '${a.role}')">Edit Role</button>
+                        <button class="action-btn ${getDisabledClass('ADMIN_MANAGE')}" style="background:#fff3e0; color:#ef6c00;" onclick="openEditAdmin('${doc.id}', '${a.email}')">Edit Rights</button>
                         <button class="action-btn btn-delete ${getDisabledClass('ADMIN_MANAGE')}" onclick="deleteAdmin('${doc.id}', '${a.email}')">Remove</button>
                     </td>
                 </tr>`;
@@ -4277,6 +4951,10 @@
 
         window.deleteInquiry = async (id) => {
             if (!require('INQUIRY_DELETE')) return; // Super admin only
+            if (!can('SUPER_ADMIN')) {
+                showToast("Only Super Admins can delete inquiry records.", 'error');
+                return;
+            }
             if(!confirm("Delete this inquiry?")) return;
             showLoading();
             try {
@@ -4303,6 +4981,17 @@
             document.getElementById('email-message').value = `Dear ${name},\n\nThank you for contacting us.\n\n`;
             document.getElementById('email-message').focus();
         }
+    </script>
+</body>
+</html>
+</body>
+</html>
+</body>
+</html>
+</body>
+</html>
+</body>
+</html>
     </script>
 </body>
 </html>
