@@ -435,6 +435,22 @@
                             <div style="flex:1; min-width:200px;">
                                 <input type="text" id="contribution-search" placeholder="Search email, month, ref..." onkeyup="applyContributionFilters()">
                             </div>
+                            <select id="contribution-filter-month" onchange="applyContributionFilters()" style="width:auto; padding:10px; border:1px solid #ddd; border-radius:5px;">
+                                <option value="all">All Months</option>
+                                <option>Registration Fee</option>
+                                <option>January</option>
+                                <option>February</option>
+                                <option>March</option>
+                                <option>April</option>
+                                <option>May</option>
+                                <option>June</option>
+                                <option>July</option>
+                                <option>August</option>
+                                <option>September</option>
+                                <option>October</option>
+                                <option>November</option>
+                                <option>December</option>
+                            </select>
                         </div>
                         <div class="table-container">
                         <table>
@@ -4322,12 +4338,16 @@
         // 6. Filter & Render Contributions
         window.applyContributionFilters = () => {
             const search = document.getElementById('contribution-search').value.toLowerCase();
+            const monthFilter = document.getElementById('contribution-filter-month').value;
             
             let filtered = allContributionsCache.filter(c => {
                 const matchesSearch = (c.email && c.email.toLowerCase().includes(search)) ||
                                       (c.month && c.month.toLowerCase().includes(search)) ||
                                       (c.id && c.id.toLowerCase().includes(search));
-                return matchesSearch;
+                
+                const matchesMonth = monthFilter === 'all' || c.month === monthFilter;
+
+                return matchesSearch && matchesMonth;
             });
 
             // Data is already sorted by date descending from Firestore query
