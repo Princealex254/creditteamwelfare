@@ -1336,7 +1336,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, orderBy, query, limit, where, deleteDoc, doc, updateDoc, getDoc, enableIndexedDbPersistence, onSnapshot, setDoc, runTransaction, arrayUnion, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, orderBy, query, limit, where, deleteDoc, doc, updateDoc, getDoc, enableIndexedDbPersistence, onSnapshot, setDoc, runTransaction, arrayUnion, writeBatch, getAggregateFromServer, sum } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
@@ -1463,6 +1463,7 @@
         let allMeetingsCache = []; // Cache for meetings
         let allLogsCache = []; // Cache for logs
         let allNotificationsCache = []; // Cache for notifications
+        window.allContributionsLoaded = false;
         let mailUnsubscribe = null; // Real-time listener for mail
         let currentCaseStatusFilter = 'ALL';
         let charts = {
@@ -1687,8 +1688,11 @@
             
             // Update Header Title
             document.getElementById('active-view-title').textContent = viewName.charAt(0).toUpperCase() + viewName.slice(1).replace('-', ' ');
-            
-            if (viewName !== 'dashboard') loadData(); // Only reload if not dashboard to save resources
+
+            if (viewName !== 'dashboard') {
+                const needsAllConts = (viewName === 'members' || viewName === 'cases');
+                loadData(needsAllConts); 
+            }
             
             // Close sidebar on mobile
             if(window.innerWidth <= 768) {
@@ -4336,10 +4340,16 @@
         }
 
         // 6. Filter & Render Contributions
-        window.applyContributionFilters = () => {
+        window.applyContributionFilters = async () => {
             const search = document.getElementById('contribution-search').value.toLowerCase();
             const monthFilter = document.getElementById('contribution-filter-month').value;
             
+            // If searching and we haven't fetched all contributions yet, fetch them now to allow deep search
+            if ((search !== '' || monthFilter !== 'all') && !window.allContributionsLoaded) {
+                await loadData(true);
+                return;
+            }
+
             let filtered = allContributionsCache.filter(c => {
                 const matchesSearch = (c.email && c.email.toLowerCase().includes(search)) ||
                                       (c.month && c.month.toLowerCase().includes(search)) ||
@@ -4384,22 +4394,43 @@
 
         // Helper: Calculate Arrears
         const getArrearsCount = (memberEmail) => {
-            const today = new Date();
-            const currentMonth = today.toLocaleString('default', { month: 'long' });
-            const currentYear = today.getFullYear();
+            const member = allMembersCache.find(m => m.email === memberEmail);
+            if (!member || !member.joined) return 0;
 
-            // Check if member paid this month
-            const hasPaid = allContributionsCache.some(c => {
-                if (c.email !== memberEmail) return false;
-                const paidDate = new Date(c.date);
-                return c.month === currentMonth && paidDate.getFullYear() === currentYear;
+            const today = new Date();
+            const joinedDate = new Date(member.joined);
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            
+            const paidMonthsSet = new Set();
+            allContributionsCache.forEach(c => {
+                if (c.email && memberEmail && c.email.toLowerCase() === memberEmail.toLowerCase()) {
+                    if (c.month !== "Registration Fee") {
+                        const paidDate = c.paidAt ? (c.paidAt.toDate ? c.paidAt.toDate() : new Date(c.paidAt)) : new Date(c.date);
+                        const monthIndex = monthNames.findIndex(mn => mn.toLowerCase() === (c.month || "").toLowerCase());
+                        if (monthIndex !== -1) {
+                            const year = paidDate.getFullYear();
+                            const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+                            paidMonthsSet.add(monthKey);
+                        }
+                    }
+                }
             });
 
-            if (today.getDate() > 5 && !hasPaid) {
-                return 1;
+            let arrearsCount = 0;
+            let currentMonthIterator = new Date(joinedDate.getFullYear(), joinedDate.getMonth(), 1);
+            
+            while (currentMonthIterator <= today) {
+                const year = currentMonthIterator.getFullYear();
+                const monthIndex = currentMonthIterator.getMonth();
+                const monthKey = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+                
+                const fifthOfMonth = new Date(year, monthIndex, 5);
+                if (!paidMonthsSet.has(monthKey) && today > fifthOfMonth) {
+                    arrearsCount++;
+                }
+                currentMonthIterator.setMonth(currentMonthIterator.getMonth() + 1);
             }
-
-            return 0;
+            return arrearsCount;
         }
 
         // 6. Filter & Render Members
@@ -4539,7 +4570,9 @@
         }
 
         // Load Data for Admin View
-        async function loadData() {
+        async function loadData(forceAllContributions = false) {
+            if (forceAllContributions) window.allContributionsLoaded = true;
+
             // 1. Registrations
             const qReg = query(collection(db, "registrations"), orderBy("date", "desc"));
             const regSnap = await getDocs(qReg);
@@ -4625,17 +4658,22 @@
             if(meetTable) meetTable.innerHTML = meetHTML || '<tr><td colspan="4">No upcoming meetings.</td></tr>';
 
             // 3. Contributions
-            // Fetch ALL for stats and export
-            const qCont = query(collection(db, "contributions"), orderBy("date", "desc"));
+            let qCont;
+            if (window.allContributionsLoaded) {
+                qCont = query(collection(db, "contributions"), orderBy("date", "desc"));
+            } else {
+                // Limit initial load to 20 to avoid excessive reads
+                qCont = query(collection(db, "contributions"), orderBy("date", "desc"), limit(20));
+            }
+
             const contSnap = await getDocs(qCont);
             allContributionsCache = [];
             contSnap.forEach((doc) => {
                 const c = { id: doc.id, ...doc.data() };
                 allContributionsCache.push(c);
             });
-            
-            // This will render the table
-            applyContributionFilters();
+
+            await applyContributionFilters();
             updatePremiumDashboard();
 
             // 3c. Expenditures
@@ -4665,17 +4703,26 @@
             const expTable = document.getElementById('expenditures-table-body');
             if(expTable) expTable.innerHTML = expHTML || '<tr><td colspan="5">No expenditures recorded.</td></tr>';
 
-            // 3b. Compute Contribution Stats
+            // 3b. Compute Contribution Stats (Using Aggregations for total collected to save reads)
+            let totalCollectedAllTime = 0;
+            if (window.allContributionsLoaded) {
+                allContributionsCache.forEach(c => totalCollectedAllTime += parseFloat(c.amount || 0));
+            } else {
+                const coll = collection(db, "contributions");
+                const aggregateSnap = await getAggregateFromServer(coll, {
+                    total: sum('amount')
+                });
+                totalCollectedAllTime = aggregateSnap.data().total;
+            }
+
             const today = new Date();
             const currentMonthName = today.toLocaleString('default', { month: 'long' });
             const currentYear = today.getFullYear();
             let totalCollected = 0;
-            let totalCollectedAllTime = 0;
             const uniquePaidEmails = new Set();
-            
+
             allContributionsCache.forEach(c => {
                 const amount = parseFloat(c.amount || 0);
-                totalCollectedAllTime += amount;
                 const cDate = new Date(c.date);
                 if (c.month === currentMonthName && cDate.getFullYear() === currentYear) {
                     totalCollected += amount;
