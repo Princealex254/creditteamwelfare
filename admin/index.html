@@ -153,10 +153,15 @@
 
         /* Toast Notifications */
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 3000; }
-        .toast { background: var(--white); padding: 15px 25px; border-radius: 5px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; border-left: 5px solid var(--primary); transform: translateX(120%); transition: transform 0.3s ease; }
-        .toast.show { transform: translateX(0); }
+        .toast { background: var(--white); padding: 15px 20px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.16); margin-bottom: 12px; display: flex; align-items: center; gap: 12px; border-left: 5px solid var(--primary); transform: translateX(120%); transition: transform 0.3s ease, opacity 0.3s ease; opacity: 0; }
+        .toast.show { transform: translateX(0); opacity: 1; }
         .toast.success { border-left-color: #28a745; }
         .toast.error { border-left-color: #dc3545; }
+        .toast.warning { border-left-color: #f59e0b; }
+        .toast.info { border-left-color: #0ea5e9; }
+        .toast-content { display: flex; flex-direction: column; gap: 4px; }
+        .toast-title { font-weight: 700; font-size: 0.95rem; }
+        .toast-message { font-size: 0.9rem; color: #334155; }
 
         /* Table Styles for Members */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -1284,6 +1289,8 @@
                 <div class="list-item" id="cd-disbursal-info" style="display:none; background:#e8f5e9;">
                     <strong>Disbursal Info:</strong> <span id="cd-disbursal-text"></span>
                 </div>
+                <div class="list-item"><strong>Assigned Approvers:</strong> <span id="cd-assigned-approvers-summary" style="color:#444;">-</span></div>
+                <div class="list-item" id="cd-assigned-approver-action" style="margin-top:8px;"></div>
             </div>
 
             <!-- Timeline Tab -->
@@ -1300,6 +1307,7 @@
                 <div id="case-actions-container">
                     <!-- Dynamic buttons based on status -->
                     <div id="case-approvals-info" style="margin-bottom:15px; font-size:0.9rem; color:#666;"></div>
+                    <div id="case-add-approver-action" style="margin-top:10px;"></div>
                 </div>
             </div>
             
@@ -1336,7 +1344,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, orderBy, query, limit, where, deleteDoc, doc, updateDoc, getDoc, enableIndexedDbPersistence, onSnapshot, setDoc, runTransaction, arrayUnion, writeBatch, getAggregateFromServer, sum } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, orderBy, query, limit, where, deleteDoc, doc, updateDoc, getDoc, enableIndexedDbPersistence, onSnapshot, setDoc, runTransaction, arrayUnion, arrayRemove, writeBatch, getAggregateFromServer, sum } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDGErPBeQ1Fdx9EHPXOHepoEoOx7P2f57o",
@@ -1587,13 +1595,22 @@
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
-            toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> ${message}`;
+            const icon = type === 'success' ? '✅' : type === 'error' ? '⚠️' : type === 'warning' ? '⚠️' : '💬';
+            const title = type === 'success' ? 'Great!' : type === 'error' ? 'Oops!' : type === 'warning' ? 'Heads up!' : 'Note:';
+            const friendlyMessage = String(message).replace(/^Error:\s*/i, '').trim();
+            toast.innerHTML = `
+                <div class="toast-icon">${icon}</div>
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${friendlyMessage}</div>
+                </div>
+            `;
             container.appendChild(toast);
             setTimeout(() => toast.classList.add('show'), 10);
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            }, 3500);
         }
 
         window.showLoading = () => document.getElementById('loading-overlay').style.display = 'flex';
@@ -1733,37 +1750,37 @@
                 snapshot.forEach(doc => {
                     const notification = { id: doc.id, ...doc.data() };
                     allNotificationsCache.push(notification);
-
+ 
                     const isRead = notification.readBy && notification.readBy.includes(auth.currentUser.email);
                     if (!isRead) {
                         unreadCount++;
-                    }
-
-                    const itemClass = isRead ? '' : 'unread';
-                    const icon = notification.type === 'NEW_ANNOUNCEMENT' ? '📢' :
-                                 notification.type === 'NEW_MEETING' ? '🗓️' :
-                                 notification.type === 'NEW_REGISTRATION' ? '👥' :
-                                 notification.type === 'CASE_APPROVAL_NEEDED' ? '⚠️' :
-                                 notification.type === 'CASE_APPROVED' ? '✅' :
-                                 notification.type === 'CASE_REJECTED' ? '❌' :
-                                 notification.type === 'CASE_DISBURSED' ? '💸' :
-                                 '🔔';
-
-                    dropdownHTML += `
-                        <div class="notification-item ${itemClass}" onclick="handleNotificationClick('${notification.id}', '${notification.link || ''}')">
-                            <span class="icon">${icon}</span>
-                            <div>
-                                <div style="font-size:0.9rem;">${notification.message}</div>
-                                <div style="font-size:0.75rem; color:#888;">${new Date(notification.createdAt).toLocaleString()}</div>
+ 
+                        // Only render unread notifications
+                        const icon = notification.type === 'NEW_ANNOUNCEMENT' ? '📢' :
+                                     notification.type === 'NEW_MEETING' ? '🗓️' :
+                                     notification.type === 'NEW_REGISTRATION' ? '👥' :
+                                     notification.type === 'CASE_APPROVAL_NEEDED' ? '⚠️' :
+                                     notification.type === 'CASE_APPROVED' ? '✅' :
+                                     notification.type === 'CASE_REJECTED' ? '❌' :
+                                     notification.type === 'CASE_DISBURSED' ? '💸' :
+                                     '🔔';
+ 
+                        dropdownHTML += `
+                            <div class="notification-item unread" onclick="handleNotificationClick('${notification.id}', '${notification.link || ''}')">
+                                <span class="icon">${icon}</span>
+                                <div>
+                                    <div style="font-size:0.9rem;">${notification.message}</div>
+                                    <div style="font-size:0.75rem; color:#888;">${new Date(notification.createdAt).toLocaleString()}</div>
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    }
                 });
-
+ 
                 document.querySelectorAll('.notification-count').forEach(el => el.textContent = unreadCount);
                 notificationDropdowns.forEach(dropdown => {
                     dropdown.innerHTML = dropdownHTML || '<div class="notification-item" style="justify-content:center; color:#888;">No new notifications</div>';
-                    
+                     
                     if (unreadCount > 0) {
                         dropdown.innerHTML += `
                             <div class="notification-item" style="justify-content:center; background:#f0f0f0; cursor:pointer;" onclick="markAllNotificationsAsRead()">
@@ -2119,17 +2136,11 @@
                                 </div>
                             `;
                             
-                            emailPromises.push(addDoc(collection(db, "mail"), {
-                                to: m.email,
-                                message: { subject: `Invitation: ${title}`, html },
-                                type: "MEETING_INVITE",
-                                status: "PENDING",
-                                createdAt: new Date().toISOString()
-                            }));
+                            emailPromises.push(sendSystemEmail(m.email, m.name, `Invitation: ${title}`, html));
                         }
                     });
                     await Promise.all(emailPromises);
-                    showToast(`Meeting scheduled & ${emailPromises.length} invitations queued.`);
+                    showToast(`Meeting scheduled & ${emailPromises.length} invitations sent.`);
                 } else {
                     showToast("Meeting scheduled (no emails sent).");
                 }
@@ -2196,22 +2207,11 @@
                         <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
                     </div>`;
 
-                await addDoc(collection(db, "mail"), {
-                    to: email,
-                    message: {
-                        subject: `Payment Receipt - ${purpose}`,
-                        html: emailHtml
-                    },
-                    type: "CONTRIBUTION_RECEIPT",
-                    status: "PENDING",
-                    createdAt: new Date().toISOString(),
-                    relatedMemberEmail: email,
-                    lastAttempt: new Date().toISOString(),
-                    attempts: 0,
-                    lastError: ""
-                });
-                console.log("Contribution email queued.");
-                showToast("Email queued ✅");
+                const sent = await sendSystemEmail(email, name, `Payment Receipt - ${purpose}`, emailHtml);
+                if (sent) {
+                    console.log("Contribution email sent.");
+                    showToast("Email sent ✅");
+                }
             } catch (error) {
                 console.error("Error queuing contribution email:", error);
                 showToast("Queue failed ❌", 'error');
@@ -2550,22 +2550,11 @@
                     </div>`;
 
                 // 3. Add to 'mail' collection
-                await addDoc(collection(db, "mail"), {
-                    to: email,
-                    message: {
-                        subject: "Welcome to Credit Team Welfare – Membership Confirmation",
-                        html: emailHtml
-                    },
-                    type: "WELCOME_MEMBER",
-                    status: "PENDING",
-                    createdAt: new Date().toISOString(),
-                    relatedMemberEmail: email,
-                    lastAttempt: new Date().toISOString(),
-                    attempts: 0,
-                    lastError: ""
-                });
-                console.log("Welcome email queued successfully.");
-                showToast("Email queued ✅");
+                const sent = await sendSystemEmail(email, name, "Welcome to Credit Team Welfare – Membership Confirmation", emailHtml);
+                if (sent) {
+                    console.log("Welcome email sent successfully.");
+                    showToast("Email sent ✅");
+                }
             } catch (error) {
                 console.error("Error queuing welcome email:", error);
                 showToast("Queue failed ❌", 'error');
@@ -2591,10 +2580,11 @@
                     newDoc.attempts = 0;
                     newDoc.lastError = "";
                     
-                    await addDoc(collection(db, "mail"), newDoc);
-                    await logActivity("RESEND_EMAIL", { originalId: id, to: data.to });
-                    showToast("Email requeued successfully ✅");
-                    loadData();
+                    const sent = await sendSystemEmail(data.to, data.name || '', data.message?.subject || 'Resent Email', data.message?.html || '');
+                    if (sent) {
+                        await logActivity("RESEND_EMAIL", { originalId: id, to: data.to });
+                        showToast("Email resent successfully ✅");
+                    }
                     await loadData();
                 }
             } catch (e) { showToast("Failed to resend: " + e.message, 'error'); }
@@ -2813,11 +2803,28 @@
             if(confirm('Are you sure you want to archive this member? They can be restored from the Archived list.')) {
                 showLoading();
                 try {
+                    const member = allMembersCache.find(m => m.id === id);
                     await updateDoc(doc(db, "members", id), { status: 'Archived' });
                     await logActivity("ARCHIVE_MEMBER", { id });
                     showToast('Member archived.');
                     loadData();
                     await loadData();
+                    
+                    // Send archive notification email
+                    if (member && member.email) {
+                        const archiveHtml = `
+                            <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                                <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Account Archived</h2>
+                                <p>Dear <strong>${member.name}</strong>,</p>
+                                <p>Your membership with Credit Team Welfare has been archived.</p>
+                                <p>This means your account is no longer active and you will not receive further communications or be able to access member services.</p>
+                                <p>If you believe this was done in error or wish to appeal this decision, please contact the welfare committee immediately.</p>
+                                <br>
+                                <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                            </div>
+                        `;
+                        await sendSystemEmail(member.email, member.name, "Account Archived - Credit Team Welfare", archiveHtml);
+                    }
                 } catch(e) { showToast("Error: " + e.message, 'error'); }
                 finally { hideLoading(); }
             }
@@ -2832,11 +2839,34 @@
             if(confirm('Are you sure you want to restore this member?')) {
                 showLoading();
                 try {
+                    const member = allMembersCache.find(m => m.id === id);
                     await updateDoc(doc(db, "members", id), { status: 'Active' });
                     await logActivity("RESTORE_MEMBER", { id });
                     showToast('Member restored to Active status.');
                     loadData();
                     await loadData();
+                    
+                    // Send restoration notification email
+                    if (member && member.email) {
+                        const restoreHtml = `
+                            <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                                <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Account Restored</h2>
+                                <p>Dear <strong>${member.name}</strong>,</p>
+                                <p>Good news! Your membership with Credit Team Welfare has been restored.</p>
+                                <p>Your account is now <strong>Active</strong> and you can once again access all member services including:</p>
+                                <ul style="margin: 15px 0;">
+                                    <li>Making contributions</li>
+                                    <li>Viewing announcements and meetings</li>
+                                    <li>Submitting welfare cases</li>
+                                    <li>Accessing the member portal</li>
+                                </ul>
+                                <p>We're pleased to have you back as an active member of our welfare community.</p>
+                                <br>
+                                <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                            </div>
+                        `;
+                        await sendSystemEmail(member.email, member.name, "Account Restored - Credit Team Welfare", restoreHtml);
+                    }
                 } catch(e) { showToast("Error: " + e.message, 'error'); }
                 finally { hideLoading(); }
             }
@@ -2851,11 +2881,28 @@
             if(confirm('WARNING: This will permanently delete the member record. This action CANNOT be undone. Continue?')) {
                 showLoading();
                 try {
+                    const member = allMembersCache.find(m => m.id === id);
                     await deleteDoc(doc(db, "members", id));
                     await logActivity("PERMANENT_DELETE_MEMBER", { id });
                     showToast('Member permanently deleted.');
                     loadData();
                     await loadData();
+                    
+                    // Send final notification email
+                    if (member && member.email) {
+                        const deleteHtml = `
+                            <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                                <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Account Removal Confirmation</h2>
+                                <p>Dear <strong>${member.name}</strong>,</p>
+                                <p>This is to confirm that your membership with Credit Team Welfare has been permanently removed from our system.</p>
+                                <p>All your data has been deleted and cannot be recovered. If you wish to rejoin in the future, you will need to submit a new registration request.</p>
+                                <p>We thank you for your past participation in our welfare program.</p>
+                                <br>
+                                <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                            </div>
+                        `;
+                        await sendSystemEmail(member.email, member.name, "Account Removal - Credit Team Welfare", deleteHtml);
+                    }
                 } catch(e) { showToast("Error: " + e.message, 'error'); }
                 finally { hideLoading(); }
             }
@@ -2972,11 +3019,28 @@
             if(!confirm(`Are you sure you want to change status to ${newStatus}?`)) return;
             showLoading();
             try {
+                const member = allMembersCache.find(m => m.id === id);
                 await updateDoc(doc(db, "members", id), { status: newStatus });
                 await logActivity("UPDATE_MEMBER_STATUS", { id, status: newStatus });
                 showToast(`Member status updated to ${newStatus}`);
                 loadData();
                 await loadData();
+                
+                // Send status change notification email
+                if (member && member.email) {
+                    const statusHtml = `
+                        <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                            <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Account Status Update</h2>
+                            <p>Dear <strong>${member.name}</strong>,</p>
+                            <p>Your membership status with Credit Team Welfare has been updated to: <strong>${newStatus}</strong></p>
+                            ${newStatus === 'Inactive' ? '<p>While your account is inactive, you will not be able to access member services. Please contact the committee to restore your active status.</p>' : '<p>Your account is now active. You can now access all member services including contributions, announcements, and welfare support.</p>'}
+                            <p>If you have any questions, please don\'t hesitate to reach out.</p>
+                            <br>
+                            <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                        </div>
+                    `;
+                    await sendSystemEmail(member.email, member.name, "Account Status Update - Credit Team Welfare", statusHtml);
+                }
             } catch (e) { showToast("Error updating status: " + e.message, 'error'); }
             finally { hideLoading(); }
         }
@@ -3017,12 +3081,37 @@
 
             showLoading();
             try {
+                const oldMember = allMembersCache.find(m => m.id === id);
                 await updateDoc(doc(db, "members", id), { name, email, phone, dept });
                 await logActivity("EDIT_MEMBER", { id, name, email });
                 showToast('Member Updated Successfully!');
                 closeModal('modal-edit-member');
                 loadData();
                 await loadData();
+                
+                // Send update notification email if email changed
+                if (oldMember && oldMember.email !== email) {
+                    const updateHtml = `
+                        <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                            <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Account Information Updated</h2>
+                            <p>Dear <strong>${name}</strong>,</p>
+                            <p>Your account information with Credit Team Welfare has been updated.</p>
+                            <div style="background-color: #FFF5F6; padding: 15px; border-radius: 5px; border-left: 4px solid #6B0F1A; margin: 20px 0;">
+                                <p><strong>Updated Information:</strong></p>
+                                <ul style="list-style: none; padding: 0;">
+                                    <li style="margin-bottom: 5px;"><strong>Name:</strong> ${name}</li>
+                                    <li style="margin-bottom: 5px;"><strong>Email:</strong> ${email}</li>
+                                    <li style="margin-bottom: 5px;"><strong>Phone:</strong> ${phone}</li>
+                                    <li style="margin-bottom: 5px;"><strong>Department:</strong> ${dept || 'N/A'}</li>
+                                </ul>
+                            </div>
+                            <p>If you did not request these changes or notice any discrepancies, please contact the welfare committee immediately.</p>
+                            <br>
+                            <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                        </div>
+                    `;
+                    await sendSystemEmail(email, name, "Account Information Updated - Credit Team Welfare", updateHtml);
+                }
             } catch (err) { showToast("Error: " + err.message, 'error'); }
             finally { hideLoading(); submitBtn.disabled = false; }
         }
@@ -3082,6 +3171,70 @@
         }
 
         // 8. Send Custom Email Functions
+        const MAIL_WORKER_URL = "https://creditteam.princealexdigital.workers.dev/send-email";
+
+        async function sendSystemEmail(toEmail, toName, subject, htmlBody) {
+            const createdAt = new Date().toISOString();
+            const baseDoc = {
+                to: toEmail,
+                toName: toName || 'User',
+                message: { subject: subject, html: htmlBody },
+                type: 'SYSTEM',
+                createdAt,
+                attempts: 0,
+                status: 'PENDING'
+            };
+
+            try {
+                const response = await fetch(MAIL_WORKER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ toEmail: toEmail, toName: toName || 'User', subject: subject, htmlContent: htmlBody })
+                });
+
+                let result = {};
+                try { result = await response.json(); } catch (e) { result = { rawText: await response.text() }; }
+
+                const success = response.ok && result && result.success;
+                const sentAt = new Date().toISOString();
+
+                const mailRecord = {
+                    ...baseDoc,
+                    attempts: 1,
+                    lastAttempt: sentAt,
+                    sentAt: success ? sentAt : null,
+                    status: success ? 'SENT' : 'ERROR',
+                    delivery: { state: success ? 'SENT' : 'ERROR', response: result }
+                };
+
+                try { await addDoc(collection(db, 'mail'), mailRecord); } catch (e) { console.error('Failed to write mail log:', e); }
+
+                if (!success) {
+                    const errMsg = (result && result.error) || 'Worker failed to dispatch email';
+                    console.error('Mail routing error:', errMsg);
+                    showToast("Oops! We couldn't send this email right now. Please try again in a moment.", "error");
+                    return false;
+                }
+
+                console.log(`Email successfully routed to ${toEmail}`);
+                return true;
+            } catch (error) {
+                console.error("Mail routing error:", error.message || error);
+                const failedAt = new Date().toISOString();
+                const failureRecord = {
+                    ...baseDoc,
+                    attempts: 1,
+                    lastAttempt: failedAt,
+                    sentAt: null,
+                    status: 'ERROR',
+                    delivery: { state: 'ERROR', error: error.message || String(error) }
+                };
+                try { await addDoc(collection(db, 'mail'), failureRecord); } catch (e) { console.error('Failed to write mail error log:', e); }
+                showToast("Oops! We couldn't send this email right now. Please try again in a moment.", "error");
+                return false;
+            }
+        }
+
         window.toggleEmailRecipientInput = () => {
             const type = document.getElementById('email-recipient-type').value;
             const specificGroup = document.getElementById('specific-email-group');
@@ -3140,7 +3293,6 @@
         }
 
         window.sendCustomEmail = async (e) => {
-            // e.preventDefault() is handled in HTML onsubmit
             if (!require('EMAIL_SEND')) return;
             const submitBtn = e.target.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
@@ -3148,65 +3300,61 @@
             const type = document.getElementById('email-recipient-type').value;
             const subject = document.getElementById('email-subject').value;
             const message = document.getElementById('email-message').value;
-            
             const htmlContent = `
-                <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
-                    <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">${subject}</h2>
-                    <p>${message.replace(/\n/g, '<br>')}</p>
-                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;">
-                        <strong>Payment Details:</strong><br>
-                        Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong>
-                    </div>
-                    <br>
-                    <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                <div style="font-family: 'Segoe UI', sans-serif; padding: 20px; color: #333;">
+                    <h2 style="color: #6B0F1A;">Credit Team Welfare Update</h2>
+                    <p style="font-size: 1rem; line-height: 1.5; white-space: pre-line;">${message}</p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin-top: 20px;">
+                    <p style="font-size: 0.8rem; color: #777;">This is an official administrative broadcast.</p>
                 </div>`;
-
-            const emailData = {
-                message: { subject: subject, html: htmlContent },
-                type: type === 'all' ? "CUSTOM_EMAIL_BROADCAST" : "CUSTOM_EMAIL",
-                status: "PENDING",
-                createdAt: new Date().toISOString(),
-                attempts: 0,
-                lastError: ""
-            };
 
             try {
                 if (type === 'specific') {
-                    const email = document.getElementById('selected-email-address').value;
-                    if (!email) { showToast("Please select a member first.", 'error'); return; }
-                    
-                    await addDoc(collection(db, "mail"), { ...emailData, to: email });
-                    await logActivity("SEND_EMAIL", { type: "SPECIFIC", to: email, subject });
-                    showToast("Email queued for sending ✅");
-                    e.target.reset();
-                    clearEmailSelection();
+                    const email = document.getElementById('selected-email-address').value || document.getElementById('email-search-input').value;
+                    if (!email) {
+                        showToast("Please select or enter a valid recipient email.", "error");
+                        return;
+                    }
+
+                    const success = await sendSystemEmail(email, '', subject, htmlContent);
+                    if (success) {
+                        await logActivity("SEND_EMAIL", { type: "SPECIFIC", to: email, subject });
+                        showToast("Custom email delivered successfully!", "success");
+                        e.target.reset();
+                        clearEmailSelection();
+                    }
                 } else if (type === 'all') {
-                    if(!confirm("Are you sure you want to send this email to ALL members?")) return;
-                    showToast("Queuing emails for all members...");
-                    
-                    const qMem = query(collection(db, "members"));
-                    const snapshot = await getDocs(qMem);
-                    let count = 0;
-                    const batchPromises = [];
-                    
-                    snapshot.forEach(doc => {
-                        const m = doc.data();
-                        if (m.email) {
-                            batchPromises.push(addDoc(collection(db, "mail"), { ...emailData, to: m.email }));
-                            count++;
+                    if (!confirm("Are you sure you want to send this email to ALL members?")) return;
+
+                    const membersSnap = await getDocs(query(collection(db, "members"), where("status", "==", "Active")));
+                    let sendCount = 0;
+                    const sendPromises = [];
+
+                    membersSnap.docs.forEach(memberDoc => {
+                        const member = memberDoc.data();
+                        if (member.email) {
+                            sendPromises.push(
+                                sendSystemEmail(member.email, member.name, subject, htmlContent).then(success => {
+                                    if (success) sendCount++;
+                                })
+                            );
                         }
                     });
-                    
-                    await Promise.all(batchPromises);
-                    await logActivity("SEND_EMAIL", { type: "BROADCAST", count, subject });
-                    showToast(`Successfully queued ${count} emails ✅`);
+
+                    await Promise.all(sendPromises);
+                    showToast(`Broadcast queued to ${sendCount} active members.`, "success");
                     e.target.reset();
+                    clearEmailSelection();
                 }
-            } catch (err) { showToast("Error: " + err.message, 'error'); }
-            finally { hideLoading(); submitBtn.disabled = false; }
+            } catch (err) {
+                showToast("Error processing email routine: " + err.message, 'error');
+            } finally {
+                hideLoading();
+                submitBtn.disabled = false;
+            }
         }
 
-        window.approveRegistration = (id) => {
+        window.approveRegistration = async (id) => {
             if (!require('REGISTRATION_MANAGE')) return;
             const reg = allRegistrationsCache.find(r => r.id === id);
             if (!reg) return;
@@ -3219,6 +3367,26 @@
             
             openModal('modal-add-member');
             showToast('Registration details loaded. Please set a password.');
+            
+            // Send approval notification email
+            const approvalHtml = `
+                <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                    <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Registration Approved</h2>
+                    <p>Dear <strong>${reg.name}</strong>,</p>
+                    <p>Congratulations! Your registration with Credit Team Welfare has been approved.</p>
+                    <p>Your account is being set up and you will receive your login credentials shortly. Once activated, you can access the member portal to:</p>
+                    <ul style="margin: 15px 0;">
+                        <li>Track your contributions</li>
+                        <li>View announcements and meetings</li>
+                        <li>Submit welfare cases</li>
+                    </ul>
+                    <p>If you have any questions, please contact the welfare committee.</p>
+                    <p>Welcome aboard!</p>
+                    <br>
+                    <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                </div>
+            `;
+            await sendSystemEmail(reg.email, reg.name, "Registration Approved - Credit Team Welfare", approvalHtml);
         }
 
         window.rejectRegistration = async (id) => {
@@ -3227,6 +3395,7 @@
                 showToast("Only Super Admins can delete records.", 'error');
                 return;
             }
+            const reg = allRegistrationsCache.find(r => r.id === id);
             if(confirm('Are you sure you want to reject/delete this registration request?')) {
                 showLoading();
                 try {
@@ -3235,6 +3404,23 @@
                     showToast('Registration deleted.');
                     loadData();
                     await loadData();
+                    
+                    // Send rejection notification email
+                    if (reg && reg.email) {
+                        const rejectionHtml = `
+                            <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                                <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Registration Status Update</h2>
+                                <p>Dear <strong>${reg.name}</strong>,</p>
+                                <p>Thank you for your interest in joining Credit Team Welfare.</p>
+                                <p>After careful review, we regret to inform you that your registration request has not been approved at this time. This decision may be due to incomplete information or other administrative reasons.</p>
+                                <p>If you believe this is an error or would like to reapply, please contact the welfare committee for further assistance.</p>
+                                <p>We appreciate your understanding.</p>
+                                <br>
+                                <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                            </div>
+                        `;
+                        await sendSystemEmail(reg.email, reg.name, "Registration Update - Credit Team Welfare", rejectionHtml);
+                    }
                 } catch(e) { showToast("Error: " + e.message, 'error'); }
                 finally { hideLoading(); }
             }
@@ -3326,6 +3512,19 @@
                 await logActivity("DELETE_ADMIN", { email });
                 showToast("Admin removed.");
                 await loadData();
+                
+                // Send notification to removed admin
+                const adminDeleteHtml = `
+                    <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                        <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Admin Access Removed</h2>
+                        <p>Dear Admin,</p>
+                        <p>This is to inform you that your administrative access to the Credit Team Welfare Admin Panel has been removed.</p>
+                        <p>If you believe this was done in error or have any questions, please contact the Super Admin.</p>
+                        <br>
+                        <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                    </div>
+                `;
+                await sendSystemEmail(email, 'Admin', "Admin Access Removed - Credit Team Welfare", adminDeleteHtml);
             } catch (e) { showToast("Error: " + e.message, 'error'); }
             finally { hideLoading(); }
         }
@@ -3352,6 +3551,7 @@
                 return;
             }
             const id = document.getElementById('edit-admin-id').value;
+            const email = document.getElementById('edit-admin-email').value;
             const permissions = getSelectedPermissions('edit-admin-permissions-list');
             showLoading();
             try {
@@ -3360,6 +3560,26 @@
                 showToast("Admin role updated.");
                 closeModal('modal-edit-admin');
                 await loadData();
+                
+                // Send notification to admin about role change
+                const roleUpdateHtml = `
+                    <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                        <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Admin Role Updated</h2>
+                        <p>Dear Admin,</p>
+                        <p>Your administrative permissions in the Credit Team Welfare system have been updated.</p>
+                        <div style="background-color: #FFF5F6; padding: 15px; border-radius: 5px; border-left: 4px solid #6B0F1A; margin: 20px 0;">
+                            <p><strong>Your new permissions include:</strong></p>
+                            <ul style="list-style: none; padding: 0;">
+                                ${permissions.map(p => `<li style="margin-bottom: 5px;">• ${p.replace(/_/g, ' ')}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <p>Please log in to the admin panel to see your updated access rights.</p>
+                        <p>If you have any questions about your permissions, please contact the Super Admin.</p>
+                        <br>
+                        <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                    </div>
+                `;
+                await sendSystemEmail(email, 'Admin', "Admin Role Updated - Credit Team Welfare", roleUpdateHtml);
             } catch (e) { showToast("Error: " + e.message, 'error'); }
             finally { hideLoading(); }
         }
@@ -3572,25 +3792,7 @@
                 });
 
                 // Queue Email: Case Received
-                await addDoc(collection(db, "mail"), {
-                    to: email,
-                    message: {
-                        subject: "Welfare Case Received",
-                        html: `<div style="font-family: sans-serif; color: #333;">
-                            <h2 style="color: #6B0F1A;">Welfare Case Received</h2>
-                            <p>Your welfare support request has been received and is currently under review.</p>
-                            <p><strong>Case Reference:</strong> ${caseId}</p>
-                            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;">
-                                <strong>Payment Details:</strong><br>
-                                Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong>
-                            </div>
-                            <p>Kind regards,<br>Credit Team Welfare</p>
-                        </div>`
-                    },
-                    type: "CASE_RECEIVED",
-                    status: "PENDING",
-                    createdAt: new Date().toISOString()
-                });
+                await sendSystemEmail(email, name, "Welfare Case Received", `<div style="font-family: sans-serif; color: #333;"><h2 style="color: #6B0F1A;">Welfare Case Received</h2><p>Your welfare support request has been received and is currently under review.</p><p><strong>Case Reference:</strong> ${caseId}</p><div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;"><strong>Payment Details:</strong><br>Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong></div><p>Kind regards,<br>Credit Team Welfare</p></div>`);
 
                 showToast("Case created successfully!");
                 closeModal('modal-create-case');
@@ -3617,9 +3819,25 @@
             
             showLoading();
             try {
+                const caseData = allCasesCache.find(c => c.id === id);
                 await deleteDoc(doc(db, "cases", id));
                 await logActivity("DELETE_CASE", { id });
                 showToast("Case deleted.");
+                
+                // Send deletion notification to member
+                if (caseData && caseData.memberEmail) {
+                    const deleteCaseHtml = `
+                        <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                            <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Welfare Case Update</h2>
+                            <p>Dear <strong>${caseData.memberName}</strong>,</p>
+                            <p>We are writing to inform you that your welfare case (Reference: ${caseData.caseReference || id}) has been removed from our system.</p>
+                            <p>If you believe this is an error or you still require welfare support, please contact the committee immediately to discuss your options.</p>
+                            <br>
+                            <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                        </div>
+                    `;
+                    await sendSystemEmail(caseData.memberEmail, caseData.memberName, "Welfare Case Update - Credit Team Welfare", deleteCaseHtml);
+                }
                 
                 // Refresh cases
                 const qCases = query(collection(db, "cases"), orderBy("createdAt", "desc"));
@@ -3719,62 +3937,127 @@
         window.viewCase = async (id) => {
             const c = allCasesCache.find(x => x.id === id);
             if (!c) return;
-            
-            document.getElementById('current-case-id').value = id;
-            document.getElementById('cd-id').textContent = id;
-            document.getElementById('cd-member').textContent = `${c.memberName} (${c.memberEmail})`;
-            document.getElementById('cd-type').textContent = `${c.type} - ${c.subtype}`;
-            document.getElementById('cd-amount').textContent = formatMoney(c.amount);
-            document.getElementById('cd-date').textContent = new Date(c.createdAt).toLocaleString();
-            document.getElementById('case-detail-status').className = `status-badge ${c.status === 'APPROVED' ? 'status-active' : (c.status === 'REJECTED' ? 'status-inactive' : '')}`;
-            document.getElementById('cd-desc').textContent = c.description;
-            document.getElementById('case-detail-status').textContent = c.status;
 
-            const evidenceBox = document.getElementById('cd-evidence-box');
-            if (c.evidence) {
-                evidenceBox.style.display = 'block';
-                const link = document.getElementById('cd-evidence-link');
-                link.textContent = `Download ${c.evidence.fileName}`;
-                link.onclick = (e) => {
-                    e.preventDefault();
-                    const a = document.createElement('a');
-                    a.href = c.evidence.fileData;
-                    a.download = c.evidence.fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                };
-            } else {
-                evidenceBox.style.display = 'none';
+            const $ = (nid) => document.getElementById(nid);
+
+            const currentCaseInput = $('current-case-id'); if (currentCaseInput) currentCaseInput.value = id;
+            const cdId = $('cd-id'); if (cdId) cdId.textContent = id;
+            const cdMember = $('cd-member'); if (cdMember) cdMember.textContent = `${c.memberName} (${c.memberEmail})`;
+            const cdType = $('cd-type'); if (cdType) cdType.textContent = `${c.type} - ${c.subtype}`;
+            const cdAmount = $('cd-amount'); if (cdAmount) cdAmount.textContent = formatMoney(c.amount);
+            const cdDate = $('cd-date'); if (cdDate) cdDate.textContent = new Date(c.createdAt).toLocaleString();
+            const caseStatusEl = $('case-detail-status'); if (caseStatusEl) caseStatusEl.className = `status-badge ${c.status === 'APPROVED' ? 'status-active' : (c.status === 'REJECTED' ? 'status-inactive' : '')}`;
+            const cdDesc = $('cd-desc'); if (cdDesc) cdDesc.textContent = c.description || '';
+            const cdAssignedSummary = $('cd-assigned-approvers-summary');
+            if (cdAssignedSummary) {
+                const assigned = c.assignedApprovers || [];
+                cdAssignedSummary.textContent = assigned.length > 0 ? assigned.join(', ') : 'None';
             }
-            
-            if (c.disbursalInfo) {
-                document.getElementById('cd-disbursal-info').style.display = 'block';
-                document.getElementById('cd-disbursal-text').textContent = `${c.disbursalInfo.method} - ${c.disbursalInfo.ref}`;
-            } else {
-                document.getElementById('cd-disbursal-info').style.display = 'none';
+            const cdAssignedAction = $('cd-assigned-approver-action');
+            if (cdAssignedAction) {
+                const assigned = c.assignedApprovers || [];
+                let actionHtml = `<input type="text" id="assigned-approver-input-${id}" placeholder="approver@domain.com" style="padding:6px; width:220px; margin-right:8px;"><button class="action-btn" onclick="addAssignedApprover('${id}')">Add Approver</button>`;
+                if (assigned.length > 0) {
+                    actionHtml += '<div style="margin-top:8px; font-size:0.9rem; color:#444;">';
+                    assigned.forEach((ae) => {
+                        let removeBtn = '';
+                        try {
+                            if (can('SUPER_ADMIN')) {
+                                removeBtn = ` <button class="action-btn btn-delete" style="font-size:0.8rem; padding:3px 5px; margin-left:4px;" onclick="removeAssignedApprover('${id}', '${ae}')">Remove</button>`;
+                            }
+                        } catch (e) {}
+                        actionHtml += `<div style="display:inline-flex; align-items:center; margin-right:8px; margin-bottom:4px;">${ae}${removeBtn}</div>`;
+                    });
+                    actionHtml += '</div>';
+                }
+                cdAssignedAction.innerHTML = actionHtml;
+            }
+            if (caseStatusEl) caseStatusEl.textContent = c.status || '';
+
+            const evidenceBox = $('cd-evidence-box');
+            if (evidenceBox) {
+                if (c.evidence) {
+                    evidenceBox.style.display = 'block';
+                    const link = $('cd-evidence-link');
+                    if (link) {
+                        link.textContent = `Download ${c.evidence.fileName}`;
+                        link.onclick = (e) => {
+                            e.preventDefault();
+                            const a = document.createElement('a');
+                            a.href = c.evidence.fileData;
+                            a.download = c.evidence.fileName;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        };
+                    }
+                } else {
+                    evidenceBox.style.display = 'none';
+                }
+            }
+
+            const disbDiv = $('cd-disbursal-info');
+            if (disbDiv) {
+                if (c.disbursalInfo) {
+                    disbDiv.style.display = 'block';
+                    const disbText = $('cd-disbursal-text'); if (disbText) disbText.textContent = `${c.disbursalInfo.method} - ${c.disbursalInfo.ref}`;
+                } else {
+                    disbDiv.style.display = 'none';
+                }
             }
 
             // Load Timeline
             const qUpdates = query(collection(db, "cases", id, "updates"), orderBy("timestamp", "desc"));
             const updatesSnap = await getDocs(qUpdates);
-            const timelineDiv = document.getElementById('case-timeline-list');
-            timelineDiv.innerHTML = updatesSnap.docs.map(doc => {
-                const u = doc.data();
-                return `<div class="list-item"><small>${new Date(u.timestamp).toLocaleString()}</small><br><strong>${u.action}</strong> by ${u.by}<br>${u.note || ''}</div>`;
-            }).join('');
+            const timelineDiv = $('case-timeline-list');
+            if (timelineDiv) {
+                timelineDiv.innerHTML = updatesSnap.docs.map(doc => {
+                    const u = doc.data();
+                    return `<div class="list-item"><small>${new Date(u.timestamp).toLocaleString()}</small><br><strong>${u.action}</strong> by ${u.by}<br>${u.note || ''}</div>`;
+                }).join('');
+            }
 
-            // Display approvals info
-            const approvalsInfoDiv = document.getElementById('case-approvals-info');
+            // Display approvals info (count + list of approvers)
+            const approvalsInfoDiv = $('case-approvals-info');
             const currentApprovals = c.approvals ? c.approvals.length : 0;
-            approvalsInfoDiv.textContent = `Approvals: ${currentApprovals} / ${REQUIRED_APPROVALS}`;
+            if (approvalsInfoDiv) {
+                let approvalsHtml = `<div style="margin-bottom:6px; font-weight:600;">Approvals: ${currentApprovals} / ${REQUIRED_APPROVALS}</div>`;
+                if (c.approvals && c.approvals.length > 0) {
+                    approvalsHtml += '<ul style="margin:0; padding-left:18px; font-size:0.9rem; color:#444;">';
+                    approvalsHtml += c.approvals.map(a => {
+                        const time = a.timestamp ? new Date(a.timestamp).toLocaleString() : '';
+                        let revertBtn = '';
+                        try { if (can('SUPER_ADMIN')) revertBtn = ` <button class="action-btn btn-delete" style="margin-left:8px;" onclick="revertRecordedApproval('${id}', '${a.adminEmail}')">Revert</button>`; } catch(e) {}
+                        return `<li>${a.adminEmail} <small style="color:#666; font-size:0.8rem;">${time}</small>${revertBtn}</li>`;
+                    }).join('');
+                    approvalsHtml += '</ul>';
+                } else {
+                    approvalsHtml += `<div style="color:#666;">No approvals recorded yet.</div>`;
+                }
+
+                // Assigned approvers (who are authorized to approve this case)
+                const assigned = c.assignedApprovers || [];
+                approvalsHtml += '<div style="margin-top:8px; font-weight:600;">Assigned Approvers</div>';
+                if (assigned.length > 0) {
+                    approvalsHtml += '<ul style="margin:6px 0 0 18px; padding:0; font-size:0.9rem; color:#444;">';
+                    approvalsHtml += assigned.map(ae => {
+                        let removeBtn = ''; // This was already here, but let's make it more visible.
+                        try { if (can('SUPER_ADMIN')) removeBtn = ` <button class="action-btn btn-delete" style="margin-left:8px;" onclick="removeAssignedApprover('${id}', '${ae}')">Remove</button>`; } catch(e) {}
+                        return `<li>${ae}${removeBtn}</li>`;
+                    }).join('');
+                    approvalsHtml += '</ul>';
+                } else {
+                    approvalsHtml += `<div style="color:#666;">No approvers assigned for this case.</div>`;
+                }
+                approvalsInfoDiv.innerHTML = approvalsHtml;
+            }
 
             // Setup Actions
-            const actionsDiv = document.getElementById('case-actions-container');
+            const actionsDiv = $('case-actions-container');
             let btns = '';
             if (c.status === 'RECEIVED') {
                 btns = `<button class="btn-action ${getDisabledClass('CASE_WRITE')}" onclick="updateCaseStatus('${id}', 'IN_REVIEW')">Start Review</button>`;
-            } else if (c.status === 'IN_REVIEW') {
+            } else if (c.status === 'IN_REVIEW' || c.status === 'PENDING_APPROVAL') {
                 btns = `<div class="form-group">
                             <label>Approved Amount (KES)</label>
                             <input type="number" id="approve-amount-${id}" value="${c.amount}" style="font-weight:bold; color:green;">
@@ -3791,7 +4074,15 @@
             } else if (c.status === 'DISBURSED') {
                 btns = `<button class="btn-action ${getDisabledClass('CASE_WRITE')}" style="background:#555;" onclick="updateCaseStatus('${id}', 'CLOSED')">Close Case</button>`;
             }
-            actionsDiv.innerHTML = btns;
+            if (actionsDiv) {
+                if (!btns || !btns.trim()) {
+                    console.log(`viewCase: no actions for case ${id}, status=${c.status}`);
+                    actionsDiv.innerHTML = `<div style="color:#666; padding:10px;">No actions available for this case.</div>`;
+                } else {
+                    console.log(`viewCase: rendering actions for case ${id}, status=${c.status}`);
+                    actionsDiv.innerHTML = btns;
+                }
+            }
 
             switchCaseTab('overview');
             openModal('modal-case-details');
@@ -3829,40 +4120,62 @@
             showLoading();
             try {
                 const caseRef = doc(db, "cases", id);
+                let finalStatus = 'IN_REVIEW';
                 await runTransaction(db, async (transaction) => {
                     const caseDoc = await transaction.get(caseRef);
                     if (!caseDoc.exists()) throw "Case does not exist!";
                     const data = caseDoc.data();
 
                     let currentApprovals = data.approvals || [];
+                    const assignedApprovers = data.assignedApprovers || [];
                     const adminEmail = auth.currentUser.email;
 
+                    if (assignedApprovers.length > 0 && !assignedApprovers.includes(adminEmail)) {
+                        throw new Error('You are not assigned to approve this case.');
+                    }
+
                     if (currentApprovals.some(a => a.adminEmail === adminEmail)) {
-                        showToast("You have already approved this case.", "error");
-                        return; // Exit transaction
+                        throw new Error('You have already approved this case.');
                     }
 
                     currentApprovals.push({ adminEmail, timestamp: new Date().toISOString() });
 
-                    let newStatus = 'IN_REVIEW'; // Default if not enough approvals
-                    if (currentApprovals.length >= REQUIRED_APPROVALS) {
-                        newStatus = 'APPROVED';
+                    const requiredApprovals = assignedApprovers.length > 0 ? assignedApprovers.length : REQUIRED_APPROVALS;
+                    if (currentApprovals.length >= requiredApprovals) {
+                        finalStatus = 'APPROVED';
                     } else {
-                        newStatus = 'PENDING_APPROVAL'; // New status for intermediate approvals
+                        finalStatus = 'PENDING_APPROVAL';
                     }
 
                     transaction.update(caseRef, {
-                        status: newStatus,
-                        amount: amount, // Update amount with the latest approved amount
+                        status: finalStatus,
+                        amount: amount,
                         approvals: currentApprovals,
                         statusChangedAt: new Date().toISOString()
                     });
                 });
+
+                if (finalStatus === 'APPROVED') {
+                    const c = allCasesCache.find(x => x.id === id);
+                    if (c) {
+                        await sendSystemEmail(c.memberEmail, c.memberName, "Welfare Case Approved", `<div style="font-family: sans-serif; color: #333;"><h2 style="color: #6B0F1A;">Welfare Case Approved</h2><p>Your welfare support request has been approved.</p><p><strong>Approved Amount:</strong> KES ${amount}</p><p>Disbursal will be processed shortly.</p><div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;"><strong>Payment Details:</strong><br>Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong></div><p>Kind regards,<br>Credit Team Welfare</p></div>`);
+                        await addDoc(collection(db, "notifications"), {
+                            type: "CASE_APPROVED",
+                            message: `Case ${c.caseReference || id} has been approved!`,
+                            link: "#view-cases",
+                            relatedDocId: id,
+                            createdAt: new Date().toISOString(),
+                            readBy: []
+                        });
+                    }
+                }
+
                 showToast("Approval recorded!");
                 closeModal('modal-case-details');
                 await loadData();
-            } catch (e) { showToast("Error recording approval: " + e.message, 'error'); }
-            finally { hideLoading(); }
+            } catch (e) {
+                showToast("Error recording approval: " + (e.message || e), 'error');
+            } finally { hideLoading(); }
         }
 
         window.updateCaseStatus = async (id, status, approvedAmount = null) => {
@@ -3896,26 +4209,7 @@
                 }
 
                 if (status === 'APPROVED' && c) {
-                        await addDoc(collection(db, "mail"), {
-                            to: c.memberEmail,
-                            message: {
-                                subject: "Welfare Case Approved",
-                                html: `<div style="font-family: sans-serif; color: #333;">
-                                    <h2 style="color: #6B0F1A;">Welfare Case Approved</h2>
-                                    <p>Your welfare support request has been approved.</p>
-                                    <p><strong>Approved Amount:</strong> KES ${c.amount}</p>
-                                    <p>Disbursal will be processed shortly.</p>
-                                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;">
-                                        <strong>Payment Details:</strong><br>
-                                        Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong>
-                                    </div>
-                                    <p>Kind regards,<br>Credit Team Welfare</p>
-                                </div>`
-                            },
-                            type: "CASE_APPROVED",
-                            status: "PENDING",
-                            createdAt: new Date().toISOString()
-                        });
+                        await sendSystemEmail(c.memberEmail, c.memberName, "Welfare Case Approved", `<div style="font-family: sans-serif; color: #333;"><h2 style="color: #6B0F1A;">Welfare Case Approved</h2><p>Your welfare support request has been approved.</p><p><strong>Approved Amount:</strong> KES ${c.amount}</p><p>Disbursal will be processed shortly.</p><div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;"><strong>Payment Details:</strong><br>Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong></div><p>Kind regards,<br>Credit Team Welfare</p></div>`);
                 }
 
                 // Add notification for final approval
@@ -3929,25 +4223,7 @@
 
                 // Queue Email: Rejected
                 if (status === 'REJECTED' && c) {
-                    await addDoc(collection(db, "mail"), {
-                        to: c.memberEmail,
-                        message: {
-                            subject: "Welfare Case Update",
-                            html: `<div style="font-family: sans-serif; color: #333;">
-                                <h2 style="color: #6B0F1A;">Welfare Case Update</h2>
-                                <p>Your welfare support request has been reviewed.</p>
-                                <p>Unfortunately, the request was not approved at this time. Please contact the committee for more details.</p>
-                                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;">
-                                    <strong>Payment Details:</strong><br>
-                                    Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong>
-                                </div>
-                                <p>Kind regards,<br>Credit Team Welfare</p>
-                            </div>`
-                        },
-                        type: "CASE_REJECTED",
-                        status: "PENDING",
-                        createdAt: new Date().toISOString()
-                    });
+                    await sendSystemEmail(c.memberEmail, c.memberName, "Welfare Case Update", `<div style="font-family: sans-serif; color: #333;"><h2 style="color: #6B0F1A;">Welfare Case Update</h2><p>Your welfare support request has been reviewed.</p><p>Unfortunately, the request was not approved at this time. Please contact the committee for more details.</p><div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;"><strong>Payment Details:</strong><br>Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong></div><p>Kind regards,<br>Credit Team Welfare</p></div>`);
                 }
                 // Add notification for rejection
                 if (status === 'REJECTED' && c) {
@@ -3958,10 +4234,98 @@
                     });
                 }
 
+                // Queue Email: Under Review
+                if (status === 'IN_REVIEW' && c) {
+                    await sendSystemEmail(c.memberEmail, c.memberName, "Welfare Case Under Review", `<div style="font-family: sans-serif; color: #333;"><h2 style="color: #6B0F1A;">Welfare Case Under Review</h2><p>Your welfare support request (Reference: ${c.caseReference || id}) is now being reviewed by our committee.</p><p>We will notify you once a decision has been made. This process typically takes a few business days.</p><p>If you have any additional information to submit, please contact the committee.</p><div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;"><strong>Payment Details:</strong><br>Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong></div><p>Kind regards,<br>Credit Team Welfare</p></div>`);
+                }
+
+                // Queue Email: Disbursal Pending
+                if (status === 'DISBURSAL_PENDING' && c) {
+                    await sendSystemEmail(c.memberEmail, c.memberName, "Welfare Case - Disbursal Processing", `<div style="font-family: sans-serif; color: #333;"><h2 style="color: #6B0F1A;">Welfare Case - Disbursal Processing</h2><p>Your welfare support request (Reference: ${c.caseReference || id}) has been approved and is now being processed for disbursement.</p><p><strong>Approved Amount:</strong> KES ${c.amount}</p><p>You will receive another notification once the funds have been disbursed.</p><div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;"><strong>Payment Details:</strong><br>Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong></div><p>Kind regards,<br>Credit Team Welfare</p></div>`);
+                }
+
+                // Queue Email: Case Closed
+                if (status === 'CLOSED' && c) {
+                    await sendSystemEmail(c.memberEmail, c.memberName, "Welfare Case Closed", `<div style="font-family: sans-serif; color: #333;"><h2 style="color: #6B0F1A;">Welfare Case Closed</h2><p>Your welfare case (Reference: ${c.caseReference || id}) has been closed.</p><p>We hope the support provided was helpful. If you have any further needs or questions, please don't hesitate to contact the committee.</p><p>Thank you for being a member of Credit Team Welfare.</p><div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;"><strong>Payment Details:</strong><br>Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong></div><p>Kind regards,<br>Credit Team Welfare</p></div>`);
+                }
+
                 showToast(`Case status updated to ${status}`);
                 closeModal('modal-case-details');
                 await loadData();
             } catch(e) { showToast("Error: " + e.message, 'error'); }
+            finally { hideLoading(); }
+        }
+
+        // Add an assigned approver to a case
+        window.addAssignedApprover = async (caseId) => {
+            if (!auth.currentUser) { showToast('Permission denied', 'error'); return; }
+            const input = document.getElementById(`assigned-approver-input-${caseId}`);
+            if (!input) return;
+            const email = input.value && input.value.trim().toLowerCase();
+            if (!email) { showToast('Enter an email', 'error'); return; }
+            showLoading();
+            try {
+                const c = allCasesCache.find(x => x.id === caseId);
+                if (c && c.assignedApprovers && c.assignedApprovers.includes(email)) {
+                    showToast('This approver is already assigned', 'error');
+                    return;
+                }
+
+                await updateDoc(doc(db, 'cases', caseId), { assignedApprovers: arrayUnion(email) });
+                await logActivity('ADD_ASSIGNED_APPROVER', { caseId, email });
+
+                const caseReference = c ? c.caseReference || caseId : caseId;
+                const approverName = email.split('@')[0] || 'Approver';
+                const emailBody = `<div style="font-family: sans-serif; color: #333;"><h2 style="color: #6B0F1A;">Welfare Case Assigned for Approval</h2><p>Hello ${approverName},</p><p>You have been assigned to approve a welfare case (Reference: ${caseReference}). Please log in to the Credit Team Welfare admin portal to review and record your approval.</p><p><strong>Case ID:</strong> ${caseReference}<br><strong>Member:</strong> ${c ? c.memberName : 'Unknown'}<br><strong>Amount:</strong> KES ${c ? c.amount : 'N/A'}</p><p>Thank you for your prompt attention.</p><p>Kind regards,<br>Credit Team Welfare Committee</p></div>`;
+                const notified = await sendSystemEmail(email, approverName, 'Assigned to Approve Welfare Case', emailBody);
+                showToast(notified ? 'Approver added and notified' : 'Approver added; notification failed');
+
+                if (c) {
+                    c.assignedApprovers = c.assignedApprovers || [];
+                    if (!c.assignedApprovers.includes(email)) c.assignedApprovers.push(email);
+                }
+                await loadData();
+            } catch (e) { console.error(e); showToast('Failed to add approver: ' + (e.message || e), 'error'); }
+            finally { hideLoading(); }
+        }
+
+        // Remove an assigned approver (Super Admin only)
+        window.removeAssignedApprover = async (caseId, email) => {
+            if (!can('SUPER_ADMIN')) { showToast('Permission denied', 'error'); return; }
+            if (!confirm(`Are you sure you want to remove ${email} as an assigned approver for this case?`)) return;
+            showLoading();
+            try {
+                await updateDoc(doc(db, 'cases', caseId), { assignedApprovers: arrayRemove(email) });
+                await logActivity('REMOVE_ASSIGNED_APPROVER', { caseId, email });
+                showToast('Approver removed');
+                const c = allCasesCache.find(x => x.id === caseId);
+                if (c && c.assignedApprovers) c.assignedApprovers = c.assignedApprovers.filter(x => x !== email);
+                await loadData();
+            } catch (e) { console.error(e); showToast('Failed to remove approver', 'error'); }
+            finally { hideLoading(); }
+        }
+
+        // Revert a recorded approval (Super Admin only) - removes the approval entry
+        window.revertRecordedApproval = async (caseId, adminEmail) => {
+            if (!can('SUPER_ADMIN')) { showToast('Permission denied', 'error'); return; }
+            if (!confirm(`Revert approval by ${adminEmail}? This will remove their approval.`)) return;
+            showLoading();
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const caseRef = doc(db, 'cases', caseId);
+                    const caseSnap = await transaction.get(caseRef);
+                    if (!caseSnap.exists()) throw 'Case not found';
+                    const data = caseSnap.data();
+                    const approvals = data.approvals || [];
+                    const filtered = approvals.filter(a => a.adminEmail !== adminEmail);
+                    transaction.update(caseRef, { approvals: filtered });
+                });
+                await logActivity('REVERT_APPROVAL', { caseId, adminEmail });
+                showToast('Approval reverted');
+                const c = allCasesCache.find(x => x.id === caseId);
+                if (c && c.approvals) c.approvals = c.approvals.filter(a => a.adminEmail !== adminEmail);
+                await loadData();
+            } catch (e) { console.error(e); showToast('Failed to revert approval', 'error'); }
             finally { hideLoading(); }
         }
 
@@ -4002,29 +4366,40 @@
                     readBy: []
                 });
 
-                    await addDoc(collection(db, "mail"), {
-                    to: c.memberEmail,
-                    type: "CASE_DISBURSED",
-                    status: "PENDING",
-                    createdAt: new Date().toISOString(),
-                    message: {
-                        subject: "Welfare Support Disbursed",
-                        html: `<div style="font-family: sans-serif; color: #333;">
-                            <h2 style="color: #6B0F1A;">Welfare Support Disbursed</h2>
-                            <p>Your welfare support has been successfully disbursed.</p>
-                            <ul style="list-style: none; padding: 0;">
-                                <li><strong>Method:</strong> ${method}</li>
-                                <li><strong>Reference:</strong> ${ref}</li>
-                                <li><strong>Amount:</strong> KES ${c.amount}</li>
-                            </ul>
-                            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;">
-                                <strong>Payment Details:</strong><br>
-                                Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong>
+                    await sendSystemEmail(c.memberEmail, c.memberName, "Welfare Support Disbursed", `<div style="font-family: sans-serif; color: #333;"><h2 style="color: #6B0F1A;">Welfare Support Disbursed</h2><p>Your welfare support has been successfully disbursed.</p><ul style="list-style: none; padding: 0;"><li><strong>Method:</strong> ${method}</li><li><strong>Reference:</strong> ${ref}</li><li><strong>Amount:</strong> KES ${c.amount}</li></ul><div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.9em; color: #555;"><strong>Payment Details:</strong><br>Paybill: <strong>400200</strong> | Account: <strong>01105696179003</strong></div><p>Kind regards,<br>Credit Team Welfare</p></div>`);
+                    
+                    // Send confirmation to admins
+                    const adminHtml = `
+                        <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                            <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Disbursement Confirmation</h2>
+                            <p>Dear Admin,</p>
+                            <p>This is to confirm that a welfare case disbursement has been completed:</p>
+                            <div style="background-color: #FFF5F6; padding: 15px; border-radius: 5px; border-left: 4px solid #6B0F1A; margin: 20px 0;">
+                                <p><strong>Case Reference:</strong> ${c.caseReference || id}</p>
+                                <p><strong>Member:</strong> ${c.memberName} (${c.memberEmail})</p>
+                                <p><strong>Amount:</strong> KES ${c.amount}</p>
+                                <p><strong>Method:</strong> ${method}</p>
+                                <p><strong>Reference:</strong> ${ref}</p>
+                                <p><strong>Processed By:</strong> ${auth.currentUser.email}</p>
                             </div>
-                            <p>Kind regards,<br>Credit Team Welfare</p>
-                        </div>`
-                    }
-                });
+                            <p>This is an automated notification. Please retain this record for your files.</p>
+                            <br>
+                            <p>Credit Team Welfare System</p>
+                        </div>
+                    `;
+                    
+                    // Get all admins and send them confirmation
+                    const adminsSnap = await getDocs(collection(db, "admins"));
+                    const adminEmails = [];
+                    adminsSnap.forEach(doc => {
+                        const adminData = doc.data();
+                        if (adminData.email) adminEmails.push(adminData.email);
+                    });
+                    
+                    const adminEmailPromises = adminEmails.map(adminEmail => 
+                        sendSystemEmail(adminEmail, 'Admin', "Disbursement Confirmation - Credit Team Welfare", adminHtml)
+                    );
+                    await Promise.all(adminEmailPromises);
                 }
 
                 showToast("Disbursal recorded, expenditure added & email queued.");
@@ -4045,6 +4420,27 @@
                     action: "NOTE_ADDED", by: auth.currentUser.email, timestamp: new Date().toISOString(), note
                 });
                 document.getElementById('case-new-note').value = '';
+                
+                // Send notification to member about the new note
+                const c = allCasesCache.find(x => x.id === id);
+                if (c && c.memberEmail) {
+                    const noteHtml = `
+                        <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                            <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Update on Your Welfare Case</h2>
+                            <p>Dear <strong>${c.memberName}</strong>,</p>
+                            <p>There has been an update to your welfare case (Reference: ${c.caseReference || id}).</p>
+                            <div style="background-color: #FFF5F6; padding: 15px; border-radius: 5px; border-left: 4px solid #6B0F1A; margin: 20px 0;">
+                                <p><strong>Latest Note:</strong></p>
+                                <p style="font-style: italic; color: #555;">${note}</p>
+                            </div>
+                            <p>You can view the complete case timeline in your member portal or contact the committee for more details.</p>
+                            <br>
+                            <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                        </div>
+                    `;
+                    await sendSystemEmail(c.memberEmail, c.memberName, "Case Update - Credit Team Welfare", noteHtml);
+                }
+                
                 viewCase(id); // Refresh modal
             } catch(e) { console.error(e); }
         }
@@ -4313,18 +4709,7 @@
                             <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
                         </div>`;
 
-                    return addDoc(collection(db, "mail"), {
-                        to: m.email,
-                        message: {
-                            subject: `Reminder: ${currentMonth} Contribution Deadline`,
-                            html: emailHtml
-                        },
-                        type: "PAYMENT_REMINDER",
-                        status: "PENDING",
-                        createdAt: new Date().toISOString(),
-                        attempts: 0,
-                        lastError: ""
-                    });
+                    return sendSystemEmail(m.email, m.name, `Reminder: ${currentMonth} Contribution Deadline`, emailHtml);
                 });
 
                 await Promise.all(batchPromises);
@@ -4811,7 +5196,7 @@
             // 6. Mail Queue
             if (mailUnsubscribe) mailUnsubscribe();
 
-            const qMail = query(collection(db, "mail"), orderBy("createdAt", "desc"), limit(50));
+            const qMail = query(collection(db, "mail"), orderBy("createdAt", "desc"), limit(10));
             mailUnsubscribe = onSnapshot(qMail, (mailSnap) => {
                 let mailHTML = '';
                 mailSnap.forEach(doc => {
@@ -5008,10 +5393,36 @@
             const btn = document.querySelector('#modal-view-inquiry .btn-action');
             btn.disabled = true;
             try {
+                const inquiry = allInquiriesCache.find(i => i.id === id);
                 await updateDoc(doc(db, "inquiries", id), { status });
                 showToast("Status updated");
                 closeModal('modal-view-inquiry');
                 loadData();
+                
+                // Send status update notification to inquirer
+                if (inquiry && inquiry.email) {
+                    const statusMessages = {
+                        'NEW': 'We have received your inquiry and it is currently being reviewed.',
+                        'READ': 'Your inquiry has been read and is being processed by our team.',
+                        'REPLIED': 'We have responded to your inquiry. Please check your email for our reply.'
+                    };
+                    
+                    const inquiryHtml = `
+                        <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                            <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Inquiry Status Update</h2>
+                            <p>Dear <strong>${inquiry.name}</strong>,</p>
+                            <p>${statusMessages[status] || 'Your inquiry status has been updated.'}</p>
+                            <div style="background-color: #FFF5F6; padding: 15px; border-radius: 5px; border-left: 4px solid #6B0F1A; margin: 20px 0;">
+                                <p><strong>Your Message:</strong></p>
+                                <p style="font-style: italic; color: #555;">${inquiry.message}</p>
+                            </div>
+                            <p>If you have any further questions, please don't hesitate to reach out.</p>
+                            <br>
+                            <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                        </div>
+                    `;
+                    await sendSystemEmail(inquiry.email, inquiry.name, "Inquiry Status Update - Credit Team Welfare", inquiryHtml);
+                }
             } catch(e) { showToast("Error: " + e.message, 'error'); }
             finally { btn.disabled = false; }
         }
@@ -5025,9 +5436,26 @@
             if(!confirm("Delete this inquiry?")) return;
             showLoading();
             try {
+                const inquiry = allInquiriesCache.find(i => i.id === id);
                 await deleteDoc(doc(db, "inquiries", id));
                 showToast("Inquiry deleted");
                 loadData();
+                
+                // Send deletion notification to inquirer
+                if (inquiry && inquiry.email) {
+                    const deleteHtml = `
+                        <div style="font-family: 'Segoe UI', sans-serif; color: #333; line-height: 1.6;">
+                            <h2 style="color: #6B0F1A; border-bottom: 2px solid #C9A24D; padding-bottom: 10px;">Inquiry Record Update</h2>
+                            <p>Dear <strong>${inquiry.name}</strong>,</p>
+                            <p>We are writing to inform you that your inquiry record has been removed from our system.</p>
+                            <p>If you still have questions or concerns, please feel free to submit a new inquiry through our contact form.</p>
+                            <p>We apologize for any inconvenience this may cause.</p>
+                            <br>
+                            <p>Kind regards,<br><strong>Credit Team Welfare Committee</strong></p>
+                        </div>
+                    `;
+                    await sendSystemEmail(inquiry.email, inquiry.name, "Inquiry Record Update - Credit Team Welfare", deleteHtml);
+                }
             } catch(e) { showToast("Error: " + e.message, 'error'); }
             finally { hideLoading(); }
         }
