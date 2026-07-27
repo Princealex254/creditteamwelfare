@@ -581,13 +581,22 @@
                             <h1 class="page-title">Mail Queue</h1>
                             <p style="color:#666;">Monitor outgoing system emails.</p>
                         </div>
-                        <button class="btn-action" style="width:auto; background:#ef6c00;" onclick="retryAllFailedEmails()">↻ Retry All Failed</button>
                         <div style="display:flex; gap:10px;">
                             <button id="btn-delete-selected-mail" class="btn-action" style="width:auto; background:#c62828; display:none;" onclick="deleteSelectedEmails()">Delete Selected</button>
                             <button class="btn-action" style="width:auto; background:#ef6c00;" onclick="retryAllFailedEmails()">↻ Retry All Failed</button>
                         </div>
                     </div>
                     <div class="card">
+                        <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap; align-items:center;">
+                            <div style="display:flex; gap:5px; align-items:center; background:#f9f9f9; padding:5px; border-radius:5px; border:1px solid #ddd;">
+                                <label style="font-size:0.85rem; font-weight:600; margin:0;">Created At:</label>
+                                <input type="date" id="mail-filter-start" style="padding:5px; border:none; background:transparent; font-family:inherit;">
+                                <span style="color:#666;">to</span>
+                                <input type="date" id="mail-filter-end" style="padding:5px; border:none; background:transparent; font-family:inherit;">
+                            </div>
+                            <button class="btn-action" style="width:auto; padding:8px 15px;" onclick="applyMailFilter()">🔍 Filter</button>
+                            <button class="btn-action" style="width:auto; padding:8px 15px; background:#64748b;" onclick="clearMailFilter()">✕ Clear</button>
+                        </div>
                         <div class="table-container">
                         <table>
                             <thead>
@@ -5196,7 +5205,20 @@
             // 6. Mail Queue
             if (mailUnsubscribe) mailUnsubscribe();
 
-            const qMail = query(collection(db, "mail"), orderBy("createdAt", "desc"), limit(10));
+            const mailStartVal = document.getElementById('mail-filter-start')?.value;
+            const mailEndVal = document.getElementById('mail-filter-end')?.value;
+
+            let qMail;
+            if (mailStartVal && mailEndVal) {
+                const startDate = new Date(mailStartVal);
+                startDate.setHours(0, 0, 0, 0);
+                const endDate = new Date(mailEndVal);
+                endDate.setHours(23, 59, 59, 999);
+                qMail = query(collection(db, "mail"), where("createdAt", ">=", startDate.toISOString()), where("createdAt", "<=", endDate.toISOString()), orderBy("createdAt", "desc"), limit(50));
+            } else {
+                qMail = query(collection(db, "mail"), orderBy("createdAt", "desc"), limit(10));
+            }
+
             mailUnsubscribe = onSnapshot(qMail, (mailSnap) => {
                 let mailHTML = '';
                 mailSnap.forEach(doc => {
@@ -5246,6 +5268,19 @@
                 if(selectAll) selectAll.checked = false;
                 updateMailBulkActionState();
             });
+
+            // Mail Queue Filter Functions
+            window.applyMailFilter = () => {
+                loadData(); // Reload data with new date filter values
+            };
+
+            window.clearMailFilter = () => {
+                const startInput = document.getElementById('mail-filter-start');
+                const endInput = document.getElementById('mail-filter-end');
+                if (startInput) startInput.value = '';
+                if (endInput) endInput.value = '';
+                loadData(); // Reload with no filter
+            };
 
             // 7. Activity Logs
             await loadActivityLogs();
@@ -5330,48 +5365,6 @@
             const inqTable = document.getElementById('inquiries-table-body');
             if(inqTable) inqTable.innerHTML = inqHTML || '<tr><td colspan="6">No inquiries found.</td></tr>';
         }
-
-        // Auto-Retry Worker: Checks every 5s for failed emails
-        let isRetryProcessing = false;
-
-        setInterval(async () => {
-            if (isRetryProcessing) return;
-            isRetryProcessing = true;
-
-            try {
-                // Query 1: Root status
-                const q1 = query(collection(db, "mail"), where("status", "in", ["ERROR", "FAILED"]));
-                const snap1 = await getDocs(q1);
-                
-                // Query 2: Delivery status
-                const q2 = query(collection(db, "mail"), where("delivery.state", "in", ["ERROR", "FAILED"]));
-                const snap2 = await getDocs(q2);
-
-                const uniqueIds = new Set();
-                const docsToCheck = [];
-
-                [...snap1.docs, ...snap2.docs].forEach(doc => {
-                    if (!uniqueIds.has(doc.id)) {
-                        uniqueIds.add(doc.id);
-                        if (doc.data().status !== 'ARCHIVED_RETRY') docsToCheck.push(doc);
-                    }
-                });
-
-                const now = new Date().getTime();
-
-                for (const docSnap of docsToCheck) {
-                    const data = docSnap.data();
-                    const lastTime = data.lastAttempt ? new Date(data.lastAttempt).getTime() : new Date(data.createdAt).getTime();
-
-                    // If more than 5 seconds has passed since last attempt (Immediate retry)
-                    if ((now - lastTime) > 5000) {
-                        const success = await retryMailTransaction(docSnap.id, "AUTO_WORKER");
-                        if(success) showToast(`Auto-retrying email to ${data.to} 🔄`);
-                    }
-                }
-            } catch (e) { console.error("Auto-retry worker error:", e); }
-            finally { isRetryProcessing = false; }
-        }, 5000);
 
         // Inquiry Functions
         window.viewInquiry = (id) => {
